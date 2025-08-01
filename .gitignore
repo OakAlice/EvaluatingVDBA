@@ -1,0 +1,21 @@
+# Ignore these directories at any level
+/AccelerometerData/
+/.obsidian/
+/Output/
+
+# Ignore R history files
+*.Rhistory
+
+# Ignore various other file types
+*.csv
+*.txt
+*.rds
+*.rda
+*.pdf
+*.png
+*.docx
+*.pptx
+*.svg
+*.names
+*.joblib
+*.pyc
