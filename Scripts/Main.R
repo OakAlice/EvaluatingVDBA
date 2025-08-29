@@ -4,10 +4,15 @@
 base_path <- "C:/Users/PC/OneDrive - University of the Sunshine Coast/EvaluatingVDBA"
 
 # Packages and settings ---------------------------------------------------
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("rhdf5")
+
 library(pacman)
 p_load(tidyverse,
        data.table,
        tsfeatures)
+library(rhdf5)
 
 selected_axes <- c("Accel.X", "Accel.Y", "Accel.Z")
 
@@ -15,6 +20,4 @@ selected_axes <- c("Accel.X", "Accel.Y", "Accel.Z")
 source(file = file.path(base_path, "Scripts", "FormattingRawData.R"))
 
 
-species_list <- c("Schweitzer_WoodStork", "Schloesing_FruitBat", "Khaewphakdee_FishingCat"
-)
 

@@ -15,7 +15,11 @@ dataset_dictionary <- list(
   "Dickinson_Ibex" = "Ibex10hz_processed.csv",
   "Chimienti_Razorbills" = "RAZO.txt",
   "Chimienti_Guillemots" = "COGU.txt",
-  "Dunford_Cat" = "Dunford_et_al._Cats_calibrated_data.csv"
+  "Dunford_Cat" = "Dunford_et_al._Cats_calibrated_data.csv",
+  "Isbell_OliveBaboon" = "Leopards vervets and baboons in Laikipia Kenya_part-acc.csv",
+  "Kayes_Coatis" = "Coatis on BCI Panama (data from Powell et al.)-acceleration.csv",
+  "Kays_Toucan" = "Toucan movement and seed dispersal, Gamboa, Panama (data from Kays et al. 2011)-acc.csv",
+  "Rautiainen_Reindeer" = "acceleration.csv"
 )
 
 # Functions ---------------------------------------------------------------
@@ -27,19 +31,35 @@ reformat_eobs_data <- function(data){
             ID = `individual-local-identifier`,
             freq = `eobs:acceleration-sampling-frequency-per-axis`)]
   
-  long[, idx := rep(1:(.N/3), each = 3), by = .(Event.ID, timestamp)]
-  long[, axis := rep(c("X", "Y", "Z"), times = .N/3), by = .(Event.ID, timestamp)]
+  if (data$`eobs:acceleration-axes`[1] == "XYZ"){
+    long[, idx := rep(1:floor(.N/3), each = 3)[1:.N], by = .(Event.ID, timestamp)]
+    long[, axis := rep(c("X", "Y", "Z"), length.out = .N), by = .(Event.ID, timestamp)]
+    
+  } else if (data$`eobs:acceleration-axes`[1] == "XY"){
+    long[, idx := rep(1:(.N/2), each = 2)[1:.N], by = .(Event.ID, timestamp)]
+    long[, axis := rep(c("X", "Y"), times = .N/2), by = .(Event.ID, timestamp)]  
+  } else {
+    print("there is a different number of axes in this case")
+  }
   
   wide <- dcast(long, Event.ID + timestamp + ID + freq + idx ~ axis, value.var = "acc")
   
   wide[, Time := timestamp + (idx - 1) * (1/freq)]
   
-  data2 <- wide %>%
-    rename(Accel.X = X,
-           Accel.Y = Y,
-           Accel.Z = Z) %>%
-    select(Accel.X, Accel.Y, Accel.Z, Time, Event.ID, ID) %>%
-    mutate(Time = as.POSIXct(Time, format = "%Y-%m-%d %H:%M:%OS"))
+  if (data$`eobs:acceleration-axes`[1] == "XYZ"){
+    data2 <- wide %>%
+      rename(Accel.X = X,
+             Accel.Y = Y,
+             Accel.Z = Z) %>%
+      select(Accel.X, Accel.Y, Accel.Z, Time, Event.ID, ID) %>%
+      mutate(Time = as.POSIXct(Time, format = "%Y-%m-%d %H:%M:%OS"))
+  } else if (data$`eobs:acceleration-axes`[1] == "XY"){
+    data2 <- wide %>%
+      rename(Accel.X = X,
+             Accel.Y = Y) %>%
+      select(Accel.X, Accel.Y, Time, Event.ID, ID) %>%
+      mutate(Time = as.POSIXct(Time, format = "%Y-%m-%d %H:%M:%OS"))
+  }
   
   return(data2)
 }
@@ -47,7 +67,10 @@ reformat_eobs_data <- function(data){
 # Reformat the data -------------------------------------------------------
 # if its just the eobs format or something very easy, format here, otherwise run alternate script for other cases
 
-data <- fread(file.path(base_path, "AccelerometerData", species, dataset_dictionary[[species]]))
+# most species just read in directly but there are a few that need a bit more
+if (!species == "Seriyes_Bobcat" | !species == "Acacio_Stork" | species == "Minasandra_Hyena"){
+  data <- fread(file.path(base_path, "AccelerometerData", species, dataset_dictionary[[species]]))
+}
 
 if (species == "Wanja_Fox"){
   data <- data %>%
@@ -91,6 +114,75 @@ if (species == "Wanja_Fox"){
            Accel.Z = AccZ,
            Activity = Behaviour)
 
+} else if (species == "Seriyes_Bobcat"){
+  files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = "of9\\.csv$")
+  dfs <- lapply(files, function(x){
+    reformat_eobs_data(fread(x))
+  })
+  data <- rbindlist(dfs)
+
+} else if (species == "Acacio_Stork"){
+  files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = "_part\\.csv$")
+  dfs <- lapply(files, function(x){
+    fread(x, fill = TRUE) %>%
+      rename(Accel.X = `acceleration-raw-x`,
+             Accel.Y = `acceleration-raw-y`,
+             Accel.Z = `acceleration-raw-z`,
+             ID = `tag-local-identifier`,
+             Time = timestamp) %>%
+      select(Accel.X, Accel.Y, Accel.Z, Time, ID)
+  })
+  data <- rbindlist(dfs)
+
+} else if (species == "Rautiainen_Reindeer"){
+  data <- data %>%
+    mutate(Time = as.POSIXct(Timestamp, 
+                             format = "%Y/%m/%d %H:%M:%OS", tz = "UTC")) %>%
+    rename(Accel.X = X,
+           Accel.Y = Y,
+           Accel.Z = Z,
+           ID = TagID)
+
+} else if (species == "Minasandra_Hyena"){
+  # these are h5 files so require being unpacked before read
+  files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = "\\.h5$")
+  
+  dfs <- lapply(files, function(x){
+    # List top-level groups/datasets and select the one you want
+    # h5ls(x)
+    
+    # get the accel data out
+    data <- h5read(x, "A")
+    colnames(data) <- c("Accel.X", "Accel.Y", "Accel.Z")
+    
+    # get the timestamps
+    Times <- h5read(x, "UTC")
+    StartTime <- as.POSIXct(
+      paste0(Times[1,1], "/", Times[1,2], "/", Times[1,3], " ", Times[1,4], ":", Times[1,5], ":", Times[1,6]),
+      format = "%Y/%m/%d %H:%M:%OS")
+    
+    # get the sampling rate
+    Fs <- h5read(x, "fs")
+    
+    # use the sampling rate to generate a string of times
+    Time <- seq(
+      from = StartTime, 
+      by   = 1/Fs, # seconds between each of the saemples assuming constant rate
+      length.out = nrow(data)
+    )
+    
+    # get the name of the individual 
+    ID_name <- tools::file_path_sans_ext(basename(x))
+    ID <- rep(ID_name, nrow(data))
+    
+    # stitch it all together
+    data <- as.data.table(data)
+    data[, `:=`(Time = Time, ID = ID)]
+    
+    H5close() # close the file
+  })
+  
+  data <- rbindlist(dfs)
 
 } else { # everything else
   data <- reformat_eobs_data(data)
