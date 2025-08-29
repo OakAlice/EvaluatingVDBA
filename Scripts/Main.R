@@ -20,4 +20,6 @@ selected_axes <- c("Accel.X", "Accel.Y", "Accel.Z")
 source(file = file.path(base_path, "Scripts", "FormattingRawData.R"))
 
 
+# Generating VDBA for all datasets ----------------------------------------
+source(file = file.path(base_path, "Scripts", "GeneratingVDBA.R"))
 

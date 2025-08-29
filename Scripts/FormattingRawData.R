@@ -1,7 +1,4 @@
 # Formatting each of the raw data sources into standard structure ---------
-# And generate the VDBA for each time instance
-
-
 
 # Dataset dictionary ------------------------------------------------------
 # all the files have weird names so I need to define them
