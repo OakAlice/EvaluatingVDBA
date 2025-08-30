@@ -1,19 +1,18 @@
 # Generate Features -------------------------------------------------------
 
 # Functions ---------------------------------------------------------------
-processDataPerID <- function(id_raw_data, window_length, sample_rate, overlap_percent) {
+processVDBA <- function(data, available.axes, window_length, sample_rate, overlap_percent) {
   
   # Calculate window length and overlap
   samples_per_window <- window_length * sample_rate
   overlap_samples <- if (overlap_percent > 0) ((overlap_percent / 100) * samples_per_window) else 0
-  num_windows <- ceiling((nrow(id_raw_data) - overlap_samples) / (samples_per_window - overlap_samples))
+  num_windows <- ceiling((nrow(data) - overlap_samples) / (samples_per_window - overlap_samples))
   
   # Function to process each window for this specific ID
   process_window <- function(i) {
-    print(i)
     start_index <- max(1, round((i - 1) * (samples_per_window - overlap_samples) + 1))
-    end_index <- min(start_index + samples_per_window - 1, nrow(id_raw_data))
-    window_chunk <- id_raw_data[start_index:end_index, ]
+    end_index <- min(start_index + samples_per_window - 1, nrow(data))
+    window_chunk <- data[start_index:end_index, ]
     
     # Initialise output features
     window_info <- tibble(Time = NA, ID = NA, Activity = NA)
@@ -24,13 +23,13 @@ processDataPerID <- function(id_raw_data, window_length, sample_rate, overlap_pe
     window_chunk <- setDT(window_chunk)
     
     # calculate SMA, ODBA, and VDBA
-    statistical_features[, SMA := sum(rowSums(abs(window_chunk[, available_axes, with = FALSE]))) / nrow(window_chunk)]
-    ODBA <- rowSums(abs(window_chunk[, available_axes, with = FALSE]))
+    statistical_features[, SMA := sum(rowSums(abs(window_chunk[, available.axes, with = FALSE]))) / nrow(window_chunk)]
+    ODBA <- rowSums(abs(window_chunk[, available.axes, with = FALSE]))
     statistical_features[, `:=`(
       minODBA = min(ODBA, na.rm = TRUE),
       maxODBA = max(ODBA, na.rm = TRUE)
     )]
-    VDBA <- sqrt(rowSums(window_chunk[, available_axes, with = FALSE]^2))
+    VDBA <- sqrt(rowSums(window_chunk[, available.axes, with = FALSE]^2))
     statistical_features[, `:=`(
       minVDBA = min(VDBA, na.rm = TRUE),
       maxVDBA = max(VDBA, na.rm = TRUE)
@@ -40,7 +39,8 @@ processDataPerID <- function(id_raw_data, window_length, sample_rate, overlap_pe
       window_info <- window_chunk %>% 
         summarise(
           Time = first(Time),
-          ID = first(ID),
+          ID = if ("ID" %in% colnames(data)) {
+            first(data$ID)} else {NA},
           Activity = if ("Activity" %in% names(.)) {
             as.character(names(sort(table(Activity), decreasing = TRUE))[1])
           } else {
@@ -76,6 +76,14 @@ processDataPerID <- function(id_raw_data, window_length, sample_rate, overlap_pe
 # Code --------------------------------------------------------------------
 
 data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
-available.axes <- # list if it has any of Accel.X, Acce.
+available.axes <- intersect(selected.axes, colnames(data))
 
-data <- data[1:1000, ]
+if (frequency_dictionary[[species]] > 5){
+  window_sec = 1 # if the sampling rate is high, do in 1 second windows
+} else {
+  window_sec = 5 # if the sampling rate is low, do in 5 second windows
+}
+
+processed_data <- processVDBA(data, available.axes, window_length = window_sec, sample_rate = frequency_dictionary[[species]], overlap_percent = 0)
+
+fwrite(processed_data, file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
