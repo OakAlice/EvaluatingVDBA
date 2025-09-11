@@ -1,5 +1,12 @@
 # Dataset dictionary ------------------------------------------------------
 # all the files have weird names so I need to define them
+
+# where did the data come from
+source_dictionary <- list(
+  "Clemente_Data" = c("Annett_Kangaroo", "Annett_Possum", "Clemente_Echidna", "Clemente_Impala", "DiCicco_Perentie", "Sparkes_Koala", "Galea_Cat")
+)
+
+# name of the data file
 dataset_dictionary <- list(
   "Wanja_Fox" = "wanja_fox.csv",
   "Nuijten_BewickSwans" = "Biotelemetry of Bewick's swans-acceleration.csv",
@@ -17,11 +24,12 @@ dataset_dictionary <- list(
   "Rautiainen_Reindeer" = "acceleration.csv"
 )
 
+# sampling frequency
 frequency_dictionary <- list(
   "Wanja_Fox" = 33.3,
   "Nuijten_BewickSwans" = 20, # bursts of 2 sec
   "Schweitzer_WoodStork" = 10.5,
-  "Schloesing_FruitBat1" = 6.7, # burst during 15s every 2 min
+  "Schloesing_FruitBat" = 6.7, # burst during 15s every 2 min
   "Dickinson_Goat" = 10,
   "Dickinson_Ibex" = 10,
   "Chimienti_Razorbills" = 25,
@@ -31,7 +39,13 @@ frequency_dictionary <- list(
   "Rautiainen_Reindeer" = 10, # 8g
   "Seriyes_Bobcat" = 10, # 5-min intervals when the animal was moving, and at 3-h intervals when the animal was at rest
   "Acacio_Stork" = 1, # 9 consecutive GPS and acceleration fixes at 1 Hz every 20 min during daylight
-  "Minasandra_Hyena" = 25
+  "Minasandra_Hyena" = 25,
+  "Annett_Kangaroo" = 50,
+  "Clemente_Echidna" = 100,
+  "Kayes_Coatis" = 10.5,
+  "Khaewphakdee_FishingCat" = 10,
+  "Galea_Cat" = 50
 )
 
 # "Kays_Toucan" # 50 s every 3 min
+

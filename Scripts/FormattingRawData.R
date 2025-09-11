@@ -42,11 +42,19 @@ reformat_eobs_data <- function(data){
   return(data2)
 }
 
+reformat_clemente_data <- function(x){
+  dat <- fread(x)
+  colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
+  dat$Time <- as.POSIXct((dat$Time - 719529)*86400, origin = "1970-01-01", tz = "UTC")
+  dat$ID <- tools::file_path_sans_ext(basename(x))
+  dat
+}
+
 # Reformat the data -------------------------------------------------------
 # if its just the eobs format or something very easy, format here, otherwise run alternate script for other cases
 
 # most species just read in directly but there are a few that need a bit more
-if (!species == "Seriyes_Bobcat" | !species == "Acacio_Stork" | species == "Minasandra_Hyena"){
+if (!species == "Seriyes_Bobcat" | !species == "Acacio_Stork" | species == "Minasandra_Hyena" | species %in% source_dictionary["Clemente_Data"]){
   data <- fread(file.path(base_path, "AccelerometerData", species, dataset_dictionary[[species]]))
 }
 
@@ -62,7 +70,8 @@ if (species == "Wanja_Fox"){
 } else if (species == "Nuijten_BewickSwans"){
   data <- data %>%
     rename(`eobs:acceleration-sampling-frequency-per-axis` = `acceleration-sampling-frequency-per-axis`,
-         `eobs:accelerations-raw` = `accelerations-raw`)
+         `eobs:accelerations-raw` = `accelerations-raw`,
+         `eobs:acceleration-axes` = `acceleration-axes`)
   data <- reformat_eobs_data(data)
 
 } else if (species == "Dickinson_Goat" | species == "Dickinson_Ibex") {
@@ -107,8 +116,9 @@ if (species == "Wanja_Fox"){
              Accel.Y = `acceleration-raw-y`,
              Accel.Z = `acceleration-raw-z`,
              ID = `tag-local-identifier`,
-             Time = timestamp) %>%
-      select(Accel.X, Accel.Y, Accel.Z, Time, ID)
+             Time = timestamp,
+             Event.ID = `event-id`) %>%
+      select(Accel.X, Accel.Y, Accel.Z, Time, ID, Event.ID)
   })
   data <- rbindlist(dfs)
 
@@ -162,9 +172,23 @@ if (species == "Wanja_Fox"){
   
   data <- rbindlist(dfs)
 
+} else if (species %in% source_dictionary["Clemente_Data"]){
+  
+  pattern_dictionary <- list("Annett_Kangaroo" = "Collar[0-9]*\\.csv$",
+                             "Annett_Possum" = "^[0-9]{5}_.+\\.csv$",
+                             "Clemente_Impala" = "Collar_[0-9]*_.+\\.csv$",
+                             "DiCicco_Perentie" = "^[0-9]{5}.+\\.csv$",
+                             "Galea_Cat" = "_[0-9]{1}.csv$")
+  
+  files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = pattern_dictionary[[species]], ignore.case = TRUE)
+
+  dfs <- lapply(files, function(x){
+    reformat_clemente_data(x)
+  })
+  data <- rbindlist(dfs)
+  
 } else { # everything else
   data <- reformat_eobs_data(data)
-  
 }
 
 fwrite(data, file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
