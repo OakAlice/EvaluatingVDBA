@@ -44,7 +44,9 @@ frequency_dictionary <- list(
   "Clemente_Echidna" = 100,
   "Kayes_Coatis" = 10.5,
   "Khaewphakdee_FishingCat" = 10,
-  "Galea_Cat" = 50
+  "Galea_Cat" = 50,
+  "DiCicco_Perentie" = 50,
+  "Annett_Possum" = 50
 )
 
 # "Kays_Toucan" # 50 s every 3 min

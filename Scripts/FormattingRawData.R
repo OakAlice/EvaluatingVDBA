@@ -173,7 +173,7 @@ if (species == "Wanja_Fox"){
   data <- rbindlist(dfs)
 
 } else if (species %in% source_dictionary["Clemente_Data"]){
-  
+    
   pattern_dictionary <- list("Annett_Kangaroo" = "Collar[0-9]*\\.csv$",
                              "Annett_Possum" = "^[0-9]{5}_.+\\.csv$",
                              "Clemente_Impala" = "Collar_[0-9]*_.+\\.csv$",

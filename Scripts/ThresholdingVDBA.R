@@ -1,12 +1,39 @@
 # Finding the active / inactive threshold for each dataset ----------------
 
 # load in the data
-
 data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
 
+# make a plot of the frequency
+ggplot(data, aes(x = vedba))+
+  geom_freqpoly() +
+  theme_minimal()
 
+# find the vedba of the peak
+dens <- density(data$vedba, na.rm = TRUE)
+vedba_peak <- dens$x[which.max(dens$y)]
 
-ggplot(data, aes(x = Time, y = minVDBA))+
-  geom_point()
+inactive_vedba <- vedba_peak * 2 # double it for the threshold
 
+data <- data %>%
+  mutate(threshold = ifelse(vedba > inactive_vedba, "active", "inactive"))
 
+if ("Activity" %in% colnames(data)){
+  # if Activity was recorded, look at whether the threshold was logical
+  ggplot(data, aes(x = Activity, y = vedba, colour = threshold))+
+    geom_point(position = "jitter") +
+    theme_minimal()
+}
+
+# now we should take the means
+summary <- data %>%
+  group_by(ID, threshold) %>%
+  summarise(meanVDBA = mean(vedba),
+            minVDBA = min(vedba),
+            maxVDBA = max(vedba),
+            meanODBA = mean(odba),
+            minODBA = min(odba),
+            maxODBA = max(odba)
+  )
+
+# save the summary
+fwrite(summary, file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))

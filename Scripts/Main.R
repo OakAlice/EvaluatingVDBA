@@ -22,7 +22,7 @@ library(rhdf5)
 #   "Kayes_Coatis", "Kays_Toucan", "Rautiainen_Reindeer", "Seriyes_Bobcat", "Acacio_Stork", "Minasandra_Hyena"
 # )
 
-species <- species_options[1]
+species <- "Wanja_Fox"
 
 
 # Variables dictionaries --------------------------------------------------
@@ -52,9 +52,12 @@ for (row in 1:nrow(files_with_size)){
   } else {
     source(file = file.path(base_path, "Scripts", "GenerateVDBA.R"))
   }
+  
+  # Finding the threshold between active and inactive for each species ------
+  source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
+  
 }
 
-# Finding the threshold between active and inactive for each species ------
 
 
 
