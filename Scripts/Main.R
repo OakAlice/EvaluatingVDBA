@@ -13,17 +13,7 @@ p_load(tidyverse,
        data.table,
        tsfeatures,
        future)
-library(rhdf5)
-
-# Species options ---------------------------------------------------------
-# species_options <- c(
-#   "Wanja_Fox", "Nuijten_BewickSwans", "Khaewphakdee_FishingCat", "Schweitzer_WoodStork", "Schloesing_FruitBat",
-#   "Dickinson_Goat", "Dickinson_Ibex", "Chimienti_Razorbills", "Chimienti_Guillemots", "Dunford_Cat", "Isbell_OliveBaboon",
-#   "Kayes_Coatis", "Kays_Toucan", "Rautiainen_Reindeer", "Seriyes_Bobcat", "Acacio_Stork", "Minasandra_Hyena"
-# )
-
-species <- "Wanja_Fox"
-
+# library(rhdf5)
 
 # Variables dictionaries --------------------------------------------------
 source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
@@ -47,19 +37,17 @@ for (row in 1:nrow(files_with_size)){
   print(files_with_size[row,])
   species <- files_with_size[row,]$file
   
-  if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
-    print("already did this one")
-  } else {
+  #if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
+  #  print("already did this one")
+  #} else {
     source(file = file.path(base_path, "Scripts", "GenerateVDBA.R"))
-  }
+  #}
   
   # Finding the threshold between active and inactive for each species ------
   source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
-  
 }
 
 
-
-
-
+# Plotting these results --------------------------------------------------
+source(file = file.path(base_path, "Scripts", "ScalingVDBA.R"))
 

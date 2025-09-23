@@ -2,6 +2,9 @@
 
 # load in the data
 data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
+data <- data %>%
+  select(ID, vedba, odba) %>%
+  na.omit()
 
 # make a plot of the frequency
 ggplot(data, aes(x = vedba))+
@@ -35,5 +38,18 @@ summary <- data %>%
             maxODBA = max(odba)
   )
 
+overall_summary <- data %>%
+  group_by(ID) %>%
+  summarise(meanVDBA = mean(vedba),
+            minVDBA = min(vedba),
+            maxVDBA = max(vedba),
+            meanODBA = mean(odba),
+            minODBA = min(odba),
+            maxODBA = max(odba)
+  )
+overall_summary$threshold <- "all"
+
+vedba_stats <- rbind(summary, overall_summary)
+
 # save the summary
-fwrite(summary, file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))
+fwrite(vedba_stats, file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))
