@@ -187,6 +187,13 @@ if (species == "Wanja_Fox"){
   })
   data <- rbindlist(dfs)
   
+} else if (species %in% c("Mauny_Goat", "Smit_Cat", "Ladds_Seal", "Studd_Squirrel")){
+  
+  data <- data %>%
+    rename(Accel.X = X,
+           Accel.Y = Y,
+           Accel.Z = Z)
+  
 } else { # everything else
   data <- reformat_eobs_data(data)
 }

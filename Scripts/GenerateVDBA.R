@@ -125,8 +125,8 @@ if (length(unique(data$burst_id))>1){
   processed_data <- process_burst_VDBA(data)
   summarised_data <- summarise_burst_VDBA(data = processed_data)
 } else {
-  window <- ifelse(frequency_dictionary[[species]]>5, 2, 5)
-  window_samples <- window * frequency_dictionary[[species]]
+  window <- ifelse(dataset_variables[Name == species]$Frequency>5, 2, 5)
+  window_samples <- window * dataset_variables[Name == species]$Frequency
   
   processed_data <- process_cont_VDBA(data, window_length = window_samples)
   # summarised_data <- summarise_cont_VDBA(data = processed_data, window_samples)
@@ -186,17 +186,16 @@ if (zero){
       # process in bursts
       processed_data <- process_burst_VDBA(dat)
     } else {
-      window <- ifelse(frequency_dictionary[[species]]>5, 2, 5)
-      window_samples <- window * frequency_dictionary[[species]]
+      window <- ifelse(dataset_variables[Name == species]$Frequency>5, 2, 5)
+      window_samples <- window * dataset_variables[Name == species]$Frequency
       
       processed_data <- process_cont_VDBA(dat, window_length = window_samples)
     }
+    
+    # save the rescaled data
+    fwrite(processed_data, file.path(base_path, "AccelerometerData", species, paste0(species, "_processed_rescaled.csv")))
   }
   
 } else {
   print("there isn't a flat point in this analysis... :O")
 }
- 
-fwrite(processed_data, file.path(base_path, "AccelerometerData", species, paste0(species, "_processed_rescaled.csv")))
-# fwrite(summarised_data, file.path(base_path, "AccelerometerData", species, paste0(species, "_summarised.csv")))
-  # removed this latter one because it became redundant in the next step
