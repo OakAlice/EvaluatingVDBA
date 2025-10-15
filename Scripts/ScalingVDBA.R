@@ -14,9 +14,19 @@ vdba_data <- lapply(summary_files, function(x){
 })
 vdba_data <- rbindlist(vdba_data)
 
+dataset_variables$dataset <- dataset_variables$Name
+vdba_stuff <- merge(vdba_data, dataset_variables, by = 'dataset')
 
-ggplot(vdba_data, aes(x = dataset, y = meanVDBA, colour = threshold)) +
+# remove the stork data
+vdba_stuff <- vdba_stuff %>% filter(!Type == "Bird")
+
+ggplot(vdba_stuff, aes(x = dataset, y = meanVDBA, colour = threshold)) +
   geom_boxplot(outlier.shape = NA) +
   scale_y_continuous(limits = c(0, 2)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+ggplot(vdba_stuff, aes(x = Log_Mass, y = log(meanVDBA), colour = dataset)) +
+  geom_boxplot() +
+  facet_wrap(~ threshold)

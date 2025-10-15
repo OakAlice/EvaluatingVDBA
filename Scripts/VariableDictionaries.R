@@ -32,3 +32,5 @@ dataset_dictionary <- list(
 dataset_variables <- fread("Dataset_Variables.csv")
 frequency_dictionary <- dataset_variables$Frequency
 
+mass_dictionary <- dataset_variables$Log_Mass
+

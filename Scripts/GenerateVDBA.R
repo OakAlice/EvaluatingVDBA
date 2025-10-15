@@ -119,14 +119,15 @@ if (!"ID" %in% colnames(data)){
 
 # is this burst or continuous data, and if busts, label the bursts
 data <- detect_bursts(data, gap_threshold = 1)
+# data$burst_id <- "1"
 
 if (length(unique(data$burst_id))>1){
   # process in bursts
   processed_data <- process_burst_VDBA(data)
-  summarised_data <- summarise_burst_VDBA(data = processed_data)
+  # summarised_data <- summarise_burst_VDBA(data = processed_data)
 } else {
-  window <- ifelse(dataset_variables[Name == species]$Frequency>5, 2, 5)
-  window_samples <- window * dataset_variables[Name == species]$Frequency
+  window <- ifelse(as.numeric(dataset_variables[Name == species]$Frequency)>5, 2, 5)
+  window_samples <- window * as.numeric(dataset_variables[Name == species]$Frequency)
   
   processed_data <- process_cont_VDBA(data, window_length = window_samples)
   # summarised_data <- summarise_cont_VDBA(data = processed_data, window_samples)
@@ -186,8 +187,8 @@ if (zero){
       # process in bursts
       processed_data <- process_burst_VDBA(dat)
     } else {
-      window <- ifelse(dataset_variables[Name == species]$Frequency>5, 2, 5)
-      window_samples <- window * dataset_variables[Name == species]$Frequency
+      window <- ifelse(as.numeric(dataset_variables[Name == species]$Frequency)>5, 2, 5)
+      window_samples <- window * as.numeric(dataset_variables[Name == species]$Frequency)
       
       processed_data <- process_cont_VDBA(dat, window_length = window_samples)
     }
