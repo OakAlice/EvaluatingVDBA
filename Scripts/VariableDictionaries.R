@@ -3,7 +3,7 @@
 
 # where did the data come from
 source_dictionary <- list(
-  "Clemente_Data" = c("Annett_Kangaroo", "Annett_Possum", "Clemente_Echidna", "Clemente_Impala", "DiCicco_Perentie", "Sparkes_Koala", "Galea_Cat")
+  "Clemente_Data" = c("Annett_Kangaroo", "Annett_Possum", "Clemente_Echidna", "Clemente_Impala", "DiCicco_Perentie", "Sparkes_Koala", "Galea_Cat", "Gaschk_Quoll")
 )
 
 # name of the data file
@@ -29,8 +29,9 @@ dataset_dictionary <- list(
 )
 
 
-dataset_variables <- fread("Dataset_Variables.csv")
+dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 frequency_dictionary <- dataset_variables$Frequency
+device_dictionary <- dataset_variables$Device
 
 mass_dictionary <- dataset_variables$Log_Mass
 

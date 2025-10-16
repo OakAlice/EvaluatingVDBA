@@ -178,7 +178,8 @@ if (species == "Wanja_Fox"){
                              "Annett_Possum" = "^[0-9]{5}_.+\\.csv$",
                              "Clemente_Impala" = "Collar_[0-9]*_.+\\.csv$",
                              "DiCicco_Perentie" = "^[0-9]{5}.+\\.csv$",
-                             "Galea_Cat" = "_[0-9]{1}.csv$")
+                             "Galea_Cat" = "_[0-9]{1}.csv$",
+                             "Gaschk_Quoll" = "_Accel")
   
   files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = pattern_dictionary[[species]], ignore.case = TRUE)
 
