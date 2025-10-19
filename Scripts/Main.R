@@ -12,45 +12,58 @@ library(pacman)
 p_load(tidyverse,
        data.table,
        tsfeatures,
-       future)
-# library(rhdf5)
+       future,
+       RcppRoll,
+       arrow)
 
-# Variables dictionaries --------------------------------------------------
 source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
+dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 
-# Formatting all data sources into same structure -------------------------
-source(file = file.path(base_path, "Scripts", "FormattingRawData.R"))
+# Within Species and Dataset Analysis -------------------------------------
+source(file = file.path(base_path, "Scripts", "WithinSpeciesWithinDatasetAnalysis.R"))
 
-# Listing the files and chooseing the smallest of them --------------------
- formatted_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "*_reformatted\\.csv$", full.names = TRUE)
- file_info <- file.info(formatted_files)
- files_with_size <- data.frame(
-   file = basename(dirname(rownames(file_info))),
-   size_mb = round(file_info$size / (1024^2), 2)
- ) %>%
-   arrange(size_mb)
+# Within Species Across Datsets Analysis ----------------------------------
+source(file = file.path(base_path, "Scripts", "WithinSpeciesAcrossDatasetAnalysis.R"))
 
-# Generating VDBA ---------------------------------------------------------
-selected.axes <- c("Accel.X", "Accel.Y", "Accel.Z")
-for (row in 1:nrow(files_with_size)){
-  print(files_with_size[row,])
-  species <- files_with_size[row,]$file
+# Main Multi-Species Comparison -------------------------------------------
+max_samples <- 24 # in hours # the maximum samples from any individual
+
+species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
+
+for (dataset in species_list){
   
-  #if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
-  #  print("already did this one")
-  #} else {
-  #  source(file = file.path(base_path, "Scripts", "GenerateVDBA.R"))
-  #}
+  species <- basename(dataset)
+  print(species)
   
-# Finding the threshold between active and inactive for each species ------  
+  if(species %in% c("Annett_Kangaroo", "Clemente_Impala")){
+    next
+  }
+  
+  # Formatting all data sources into same structure
+  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))){
+    print("already formatted")
+  } else {
+    source(file = file.path(base_path, "Scripts", "FormattingRawData.R"))
+  }
+  
+  # Generating VDBA
+  selected.axes <- c("Accel.X", "Accel.Y", "Accel.Z")
+  if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
+    print("already did this one")
+  } else {
+    source(file = file.path(base_path, "Scripts", "GenerateVDBA.R"))
+  }
+
+  # Finding the threshold between active and inactive for each species  
   source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
+  
+  # Accounting for different brands and acceleration scales
+  source(file = file.path(base_path, "Scripts", "CalibratingDevices.R"))
 }
 
-
-source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
-
-
-
-# Plotting these results --------------------------------------------------
+# Plotting these results
 source(file = file.path(base_path, "Scripts", "ScalingVDBA.R"))
+
+
+
 

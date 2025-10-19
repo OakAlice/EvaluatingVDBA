@@ -2,6 +2,7 @@
 /AccelerometerData/
 /.obsidian/
 /Output/
+/OtherData(NotReady)/
 
 # Ignore R history files
 *.Rhistory

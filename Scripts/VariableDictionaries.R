@@ -29,9 +29,3 @@ dataset_dictionary <- list(
 )
 
 
-dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
-frequency_dictionary <- dataset_variables$Frequency
-device_dictionary <- dataset_variables$Device
-
-mass_dictionary <- dataset_variables$Log_Mass
-

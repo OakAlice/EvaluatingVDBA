@@ -8,8 +8,7 @@
 
 processed_data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
 
-# find data rows where the vedba is at the minimum
-flats <- processed_data[which(vedba == min(processed_data$vedba, na.rm = TRUE)),]
+# find places where the data is flat
 # if it's not exactly 0, then I need to find whether it's close to 0
 # with "close to 0" differing depending on the scale
 zero <- ifelse(min(processed_data$vedba, na.rm= TRUE)[1]/max(processed_data$vedba, na.rm = TRUE)[1] < 0.1 | min(processed_data$vedba, na.rm = TRUE) == 0, TRUE, FALSE)
@@ -17,22 +16,28 @@ ifelse(zero == FALSE, print("there isn't a flat spot to calibrate from"), print(
 
 if (zero){
   # in these flat spots, the static accel should == 1
-  # calculate the static accel
-  flats[, static_vedba := sqrt(ax_static^2 + ay_static^2 + az_static^2)]
+  # calculate the static accel over a rolling window (more than just a single sample)
+  processed_data[, rolling_sd := RcppRoll::roll_sd(vedba, n = 50, fill = NA, align = "center")]
+  
+  # optimised these calls for speed
+  flats <- processed_data[rolling_sd < quantile(rolling_sd, 0.05, na.rm = TRUE)]
+  flat_static <- mean(
+    sqrt(flats$ax_static^2 + flats$ay_static^2 + flats$az_static^2),
+    na.rm = TRUE
+  )
+  rm(flats)
   
   # see whether it is close to one
-  if(0.50 < mean(flats$static_vedba, na.rm = TRUE) & mean(flats$static_vedba, na.rm = TRUE) < 1.5){
+  if(0.75 <flat_static & flat_static < 1.25){
     # if its within 50% tolerance of 1, then it's fine
     print("resting static already close to one - no need to adjust scale")
     
   } else {
     
-    print(mean(flats$static_vedba, na.rm = TRUE))
     print("not close to 1: adjusting scale")
     
-    # if the mean static accel when gravity = 1 is
-    flat_static <- mean(flats$static_vedba, na.rm = TRUE)
-    # then the "scalar" I need to apply is that value
+    # if the mean static accel when gravity = 1 is the flats_static
+    # then the "scalar" I need to apply is that value 
     
     # apply that to each of my axes and recalculate the vedba
     processed_data$Accel.X <- processed_data$Accel.X / flat_static
@@ -65,3 +70,28 @@ if (zero){
 } else {
   print("there isn't a flat point in this analysis... :O")
 }
+
+
+
+
+
+
+
+# Figuring out the scaling factors for each accelerometer -----------------
+processed_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "*_processed\\.csv$", full.names = TRUE)
+summary <- lapply(processed_files, function(x) {
+  print(paste0("processing ", x))
+  fread(x) %>%
+    summarise(
+      MaxX = max(Accel.X, na.rm = TRUE),
+      MinX = min(Accel.X, na.rm = TRUE),
+      MaxDynX = max(ax_dynamic, na.rm = TRUE),
+      MinDynX = min(ax_dynamic, na.rm = TRUE),
+      MaxVDBA = max(vedba, na.rm = TRUE),
+      MinVDBA = min(vedba, na.rm = TRUE)
+    ) %>%
+    mutate(dataset = paste(str_split(basename(x), "_")[[1]][1],
+                           str_split(basename(x), "_")[[1]][2], sep = "_"))
+})
+
+

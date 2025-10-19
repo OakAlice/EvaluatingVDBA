@@ -2,12 +2,10 @@
 
 # find the files
 
-device_dictionary
-
 axivity_directory <- dataset_variables %>% filter(Device == "Axivity") %>% pull(Name)
 eobs_directory <- dataset_variables %>% filter(Device == "E-obs GmbH") %>% pull(Name)
 
-directory <- axivity_directory
+directory <- eobs_directory
 
 files <- lapply(directory, function(dir) {
   list.files(
@@ -33,6 +31,7 @@ data <- merge(data, Mass, by = "dataset")
 
 ggplot(data, aes(x = threshold, y = meanVDBA, colour = dataset)) + geom_boxplot()
 
-ggplot(data, aes(x = Log_Mass, y = log(meanVDBA), colour = threshold)) + 
+means <- data %>% group_by(dataset, threshold, Log_Mass) %>% summarise(meanVDBA = mean(meanVDBA))
+ggplot(means, aes(x = Log_Mass, y = log(meanVDBA), colour = threshold)) + 
   geom_point() + 
   geom_smooth(method = "lm")

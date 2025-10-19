@@ -56,55 +56,14 @@ process_cont_VDBA <- function(data, window_length){
 detect_bursts <- function(data, gap_threshold = 1) {
   setDT(data)
   
-  data[, burst_id := cumsum(c(0, diff(Time)) > gap_threshold) + 1, by = ID]
+  data <- data[order(ID, Time)]  # ensure sorted by ID and time
+  id_change <- c(TRUE, diff(as.integer(factor(data$ID))) != 0)  # TRUE where ID changes
+  time_gap <- c(FALSE, diff(data$Time) > gap_threshold)
+  new_burst <- id_change | time_gap
+  data[, burst_id := cumsum(new_burst)]
   
   return(data)
 }
-
-# summarise into windows of VDBA
-# summarise_cont_VDBA <- function(data, window){
-#   # chunk the data into window number of samples
-#   # calculate the mean, min, and max for vedba and odba columns
-#   data[, window_id := ((seq_len(.N) - 1) %/% window) + 1]
-#   
-#   # calculate within each of these wuindows
-#   summary <- data[, .(
-#     Time = first(Time),    # first timestamp in the window
-#     ID = first(ID),
-#     vedba_mean = mean(vedba, na.rm = TRUE),
-#     vedba_min  = min(vedba, na.rm = TRUE),
-#     vedba_max  = max(vedba, na.rm = TRUE),
-#     odba_mean  = mean(odba, na.rm = TRUE),
-#     odba_min   = min(odba, na.rm = TRUE),
-#     odba_max   = max(odba, na.rm = TRUE)
-#   ), by = .(ID, window_id)]
-#   
-#   # clean up the NA head and tail
-#   summary <- na.omit(summary)
-#   
-#   return(summary)
-# }
-# 
-# # and for the bursts too
-# summarise_burst_VDBA <- function(data){
-#   # calculate the mean, min, and max for vedba and odba columns
-#   # calculate within each of the bursts
-#   summary <- data[, .(
-#     Time = first(Time),    # first timestamp in the window
-#     ID = first(ID),
-#     vedba_mean = mean(vedba, na.rm = TRUE),
-#     vedba_min  = min(vedba, na.rm = TRUE),
-#     vedba_max  = max(vedba, na.rm = TRUE),
-#     odba_mean  = mean(odba, na.rm = TRUE),
-#     odba_min   = min(odba, na.rm = TRUE),
-#     odba_max   = max(odba, na.rm = TRUE)
-#   ), by = .(ID, burst_id)]
-#   
-#   # clean up the NA head and tail
-#   summary <- na.omit(summary)
-#   
-#   return(summary)
-# }
 
 # Code --------------------------------------------------------------------
 data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
@@ -112,10 +71,6 @@ available.axes <- intersect(selected.axes, colnames(data))
 
 # convert the time
 data$Time <- as.POSIXct(data$Time, format = "%Y-%m-%d %H:%M:%S")
-
-if (!"ID" %in% colnames(data)){
-  data$ID <- rep("Unsure", nrow(data))
-}
 
 # is this burst or continuous data, and if busts, label the bursts
 data <- detect_bursts(data, gap_threshold = 1)
@@ -132,3 +87,6 @@ if (length(unique(data$burst_id))>1){
   processed_data <- process_cont_VDBA(data, window_length = window_samples)
   # summarised_data <- summarise_cont_VDBA(data = processed_data, window_samples)
 }
+
+fwrite(processed_data, file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
+
