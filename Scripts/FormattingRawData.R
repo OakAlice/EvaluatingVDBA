@@ -112,19 +112,28 @@ if (species == "Wanja_Fox"){
 
 } else if (species == "Acacio_Stork"){
   files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = "_part\\.csv$")
-  dfs <- lapply(files, function(x){
-    fread(x, fill = TRUE) %>%
-      rename(Accel.X = `acceleration-raw-x`,
+  
+  df1 <- fread(file.path(base_path, "AccelerometerData/Acacio_Stork/White Stork Adults 2017_part.csv")) %>%
+    rename(Accel.X = `acceleration-raw-x`,
              Accel.Y = `acceleration-raw-y`,
              Accel.Z = `acceleration-raw-z`,
              ID = `tag-local-identifier`,
              Time = timestamp,
              Event.ID = `event-id`) %>%
-      select(Accel.X, Accel.Y, Accel.Z, Time, ID, Event.ID)
-  })
-  data <- rbindlist(dfs)
+    select(Accel.X, Accel.Y, Accel.Z, Time, ID, Event.ID)
   
-  rm(dfs)
+  df2 <- fread(file.path(base_path, "AccelerometerData/Acacio_Stork/White Stork Adults 2018_part.csv")) %>%
+    mutate(DateTime = paste0("01/01/2018 01:", timestamp)) %>%
+    rename(Accel.X = `acceleration-raw-x`,
+           Accel.Y = `acceleration-raw-y`,
+           Accel.Z = `acceleration-raw-z`,
+           ID = `tag-local-identifier`,
+           Time = DateTime,
+           Event.ID = `event-id`) %>%
+    select(Accel.X, Accel.Y, Accel.Z, Time, ID, Event.ID) %>%
+    mutate(Time = as.POSIXct(Time, format = "%d/%m/%Y %H:%M:%S"))
+  
+  data <- rbind(df1, df2)
 
 } else if (species == "Rautiainen_Reindeer"){
   data <- data %>%
@@ -224,7 +233,11 @@ if (!"ID" %in% colnames(data)){
 one_day <- as.numeric(dataset_variables[Name == species]$Frequency) * (60*60*max_samples)
 data <- data[, .SD[1:min(one_day, .N)], by = ID]
 
+# only seelct the columns we want
+data <- data[, c("ID", "Time", "Accel.X", "Accel.Y", "Accel.Z")]
+
 # writing it to disk
 fwrite(data, file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
 
+rm(data)
 gc()

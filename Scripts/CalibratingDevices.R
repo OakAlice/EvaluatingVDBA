@@ -6,92 +6,77 @@
 # therefore, in the still section, acceleration = 1
 # adjust the measurements to = 1
 
-processed_data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
+accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
 
-# find places where the data is flat
-# if it's not exactly 0, then I need to find whether it's close to 0
-# with "close to 0" differing depending on the scale
-zero <- ifelse(min(processed_data$vedba, na.rm= TRUE)[1]/max(processed_data$vedba, na.rm = TRUE)[1] < 0.1 | min(processed_data$vedba, na.rm = TRUE) == 0, TRUE, FALSE)
-ifelse(zero == FALSE, print("there isn't a flat spot to calibrate from"), print("calibrating"))
+sampling_style <- dataset_variables[Name == species]$SamplingStyle
+freq <- as.numeric(dataset_variables[Name == species]$Frequency)
 
-if (zero){
-  # in these flat spots, the static accel should == 1
-  # calculate the static accel over a rolling window (more than just a single sample)
-  processed_data[, rolling_sd := RcppRoll::roll_sd(vedba, n = 50, fill = NA, align = "center")]
+if (sampling_style == "Continuous") {
+  win <- 10 * freq  # 1-second rolling window
+  mag <- sqrt(accel$Accel.X^2 + accel$Accel.Y^2 + accel$Accel.Z^2)
   
-  # optimised these calls for speed
-  flats <- processed_data[rolling_sd < quantile(rolling_sd, 0.05, na.rm = TRUE)]
-  flat_static <- mean(
-    sqrt(flats$ax_static^2 + flats$ay_static^2 + flats$az_static^2),
-    na.rm = TRUE
-  )
-  rm(flats)
+  accel$rolling_sd <- rollapply(mag, win, sd, fill = NA, align = "left")
   
-  # see whether it is close to one
-  if(0.75 <flat_static & flat_static < 1.25){
-    # if its within 50% tolerance of 1, then it's fine
-    print("resting static already close to one - no need to adjust scale")
-    
-  } else {
-    
-    print("not close to 1: adjusting scale")
-    
-    # if the mean static accel when gravity = 1 is the flats_static
-    # then the "scalar" I need to apply is that value 
-    
-    # apply that to each of my axes and recalculate the vedba
-    processed_data$Accel.X <- processed_data$Accel.X / flat_static
-    processed_data$Accel.Y <- processed_data$Accel.Y / flat_static
-    processed_data$Accel.Z <- processed_data$Accel.Z / flat_static
-    
-    # reset the daat.table
-    keep_cols <- intersect(
-      c("ID", "Accel.X", "Accel.Y", "Accel.Z", "Time", "Event.ID", "burst_id"),
-      names(processed_data))
-    processed_data <- processed_data[, ..keep_cols]
-    
-    # is this burst or continuous data, and if busts, label the bursts
-    dat <- detect_bursts(processed_data, gap_threshold = 1)
-    
-    if (length(unique(dat$burst_id))>1){
-      # process in bursts
-      processed_data <- process_burst_VDBA(dat)
-    } else {
-      window <- ifelse(as.numeric(dataset_variables[Name == species]$Frequency)>5, 2, 5)
-      window_samples <- window * as.numeric(dataset_variables[Name == species]$Frequency)
-      
-      processed_data <- process_cont_VDBA(dat, window_length = window_samples)
-    }
-    
-    # save the rescaled data
-    fwrite(processed_data, file.path(base_path, "AccelerometerData", species, paste0(species, "_processed_rescaled.csv")))
-  }
+  # Identify static periods (lowest 25% of variance)
+  static_idx <- which(accel$rolling_sd < quantile(accel$rolling_sd, 0.25, na.rm = TRUE))
+  
+  # Estimate offsets (this is the sensor bias) from the known static periods
+  static_mean <- colMeans(accel[static_idx, .(Accel.X, Accel.Y, Accel.Z)], na.rm = TRUE)
+  
+  # Subtract bias and scale to unit gravity
+  accel2 <- copy(accel)
+  accel2[, `:=`(
+    Accel.X = Accel.X - static_mean["Accel.X"],
+    Accel.Y = Accel.Y - static_mean["Accel.Y"],
+    Accel.Z = Accel.Z - static_mean["Accel.Z"]
+  )]
+  scale_factor <- mean(sqrt(accel2$Accel.X^2 + accel2$Accel.Y^2 + accel2$Accel.Z^2), na.rm = TRUE)
+  accel2[, `:=`(
+    Accel.X = Accel.X / scale_factor,
+    Accel.Y = Accel.Y / scale_factor,
+    Accel.Z = Accel.Z / scale_factor
+  )]
   
 } else {
-  print("there isn't a flat point in this analysis... :O")
+  
+  # is this burst or continuous data, and if busts, label the bursts
+  accel <- detect_bursts(accel, gap_threshold = 1)
+  # data$burst_id <- "1"
+  
+  # Find static periods for the whole dataset ifnoring the bursts for now
+  mag <- sqrt(accel$Accel.X^2 + accel$Accel.Y^2 + accel$Accel.Z^2)
+  accel$mag <- mag
+  
+  # Calculate per-burst static stats
+  burst_static <- accel[, .(
+    mean_mag = mean(mag, na.rm = TRUE),
+    sd_mag = sd(mag, na.rm = TRUE)
+  ), by = burst_id]
+  
+  # Use bursts with lowest variance (most static)
+  static_bursts <- burst_static[sd_mag < quantile(sd_mag, 0.25, na.rm = TRUE), burst_id]
+  
+  # Compute mean offsets across static bursts
+  static_mean <- accel[burst_id %in% static_bursts,
+                       lapply(.SD, mean, na.rm = TRUE),
+                       .SDcols = c("Accel.X", "Accel.Y", "Accel.Z")]
+  
+  offsets <- unlist(static_mean)
+  
+  accel2 <- copy(accel)
+  accel2[, `:=`(
+    Accel.X = Accel.X - offsets["Accel.X"],
+    Accel.Y = Accel.Y - offsets["Accel.Y"],
+    Accel.Z = Accel.Z - offsets["Accel.Z"]
+  )]
+  
+  scale_factor <- mean(sqrt(accel2$Accel.X^2 + accel2$Accel.Y^2 + accel2$Accel.Z^2), na.rm = TRUE)
+  accel2[, `:=`(
+    Accel.X = Accel.X / scale_factor,
+    Accel.Y = Accel.Y / scale_factor,
+    Accel.Z = Accel.Z / scale_factor
+  )]
 }
 
-
-
-
-
-
-
-# Figuring out the scaling factors for each accelerometer -----------------
-processed_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "*_processed\\.csv$", full.names = TRUE)
-summary <- lapply(processed_files, function(x) {
-  print(paste0("processing ", x))
-  fread(x) %>%
-    summarise(
-      MaxX = max(Accel.X, na.rm = TRUE),
-      MinX = min(Accel.X, na.rm = TRUE),
-      MaxDynX = max(ax_dynamic, na.rm = TRUE),
-      MinDynX = min(ax_dynamic, na.rm = TRUE),
-      MaxVDBA = max(vedba, na.rm = TRUE),
-      MinVDBA = min(vedba, na.rm = TRUE)
-    ) %>%
-    mutate(dataset = paste(str_split(basename(x), "_")[[1]][1],
-                           str_split(basename(x), "_")[[1]][2], sep = "_"))
-})
-
-
+fwrite(accel2,
+       file.path(base_path, "AccelerometerData", species, paste0(species, "_rescaled.csv")))

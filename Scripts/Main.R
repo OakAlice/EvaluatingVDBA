@@ -14,7 +14,8 @@ p_load(tidyverse,
        tsfeatures,
        future,
        RcppRoll,
-       arrow)
+       arrow,
+       zoo)
 
 source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
@@ -27,6 +28,7 @@ source(file = file.path(base_path, "Scripts", "WithinSpeciesAcrossDatasetAnalysi
 
 # Main Multi-Species Comparison -------------------------------------------
 max_samples <- 24 # in hours # the maximum samples from any individual
+selected.axes <- c("Accel.X", "Accel.Y", "Accel.Z")
 
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
 
@@ -35,10 +37,6 @@ for (dataset in species_list){
   species <- basename(dataset)
   print(species)
   
-  if(species %in% c("Annett_Kangaroo", "Clemente_Impala")){
-    next
-  }
-  
   # Formatting all data sources into same structure
   if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))){
     print("already formatted")
@@ -46,20 +44,58 @@ for (dataset in species_list){
     source(file = file.path(base_path, "Scripts", "FormattingRawData.R"))
   }
   
+  # Accounting for different brands and acceleration scales
+  #if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_rescaled.csv")))){
+  #  print("already rescaled")
+  #} else {
+    source(file = file.path(base_path, "Scripts", "CalibratingDevices.R"))
+  #}
+  
   # Generating VDBA
-  selected.axes <- c("Accel.X", "Accel.Y", "Accel.Z")
-  if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
-    print("already did this one")
-  } else {
+  #if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
+  #  print("already did this one")
+  #} else {
     source(file = file.path(base_path, "Scripts", "GenerateVDBA.R"))
-  }
-
+  #}
+  
   # Finding the threshold between active and inactive for each species  
   source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
-  
-  # Accounting for different brands and acceleration scales
-  source(file = file.path(base_path, "Scripts", "CalibratingDevices.R"))
 }
+
+
+
+# Checking the rescaling --------------------------------------------------
+# load in the rescaled files
+processed_files <- lapply(species_list, function(x) {
+   list.files(x, pattern = "_processed.csv$", full.names = TRUE)
+})
+processed_files <- unlist(processed_files)
+
+summary_stats <- lapply(processed_files, function(x) {
+  print(paste0("processing ", x))
+  fread(x) %>%
+    summarise(
+      MaxX = max(Accel.X, na.rm = TRUE),
+      MinX = min(Accel.X, na.rm = TRUE),
+      MaxDynX = max(ax_dynamic, na.rm = TRUE),
+      MinDynX = min(ax_dynamic, na.rm = TRUE),
+      MaxStatX = max(ax_static, na.rm = TRUE),
+      MinStatX = min(ax_static, na.rm = TRUE),
+      MaxVDBA = max(vedba, na.rm = TRUE),
+      MinVDBA = min(vedba, na.rm = TRUE)
+    ) %>%
+    mutate(dataset = paste(str_split(basename(x), "_")[[1]][1],
+                           str_split(basename(x), "_")[[1]][2], sep = "_"))
+})
+summary <- rbindlist(summary_stats)
+dataset_variables$dataset <- dataset_variables$Name
+summary <- merge(summary, dataset_variables, by = "dataset")
+
+# plot this
+ggplot(summary, aes(x = dataset, y= MaxVDBA, colour = Device)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
 
 # Plotting these results
 source(file = file.path(base_path, "Scripts", "ScalingVDBA.R"))

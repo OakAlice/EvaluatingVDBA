@@ -31,7 +31,7 @@ ggplot(vdba_stuff, aes(x = dataset, y = mean_vedba, colour = threshold)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 
-ggplot(vdba_stuff, aes(x = Log_Mass, y = log(mean_vedba))) +
+ggplot(vdba_stuff, aes(x = LogMass, y = log(mean_vedba))) +
   geom_point() +
   geom_smooth(method = "lm") +
   facet_wrap(~ threshold)

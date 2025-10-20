@@ -1,12 +1,7 @@
 # Finding the active / inactive threshold for each dataset ----------------
 
 # load in the data
-rescaled_data_path <- file.path(base_path, "AccelerometerData", species, paste0(species, "_processed_rescaled.csv"))
-if (file.exists(rescaled_data_path)){
-  data <- fread(rescaled_data_path)
-} else {
-  data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
-}
+data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
 
 data <- data %>%
   select(ID, vedba, odba) %>%

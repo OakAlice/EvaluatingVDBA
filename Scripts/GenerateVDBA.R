@@ -66,26 +66,18 @@ detect_bursts <- function(data, gap_threshold = 1) {
 }
 
 # Code --------------------------------------------------------------------
-data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
+data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_rescaled.csv")))
 available.axes <- intersect(selected.axes, colnames(data))
-
-# convert the time
-data$Time <- as.POSIXct(data$Time, format = "%Y-%m-%d %H:%M:%S")
-
-# is this burst or continuous data, and if busts, label the bursts
-data <- detect_bursts(data, gap_threshold = 1)
-# data$burst_id <- "1"
 
 if (length(unique(data$burst_id))>1){
   # process in bursts
   processed_data <- process_burst_VDBA(data)
-  # summarised_data <- summarise_burst_VDBA(data = processed_data)
+  
 } else {
   window <- ifelse(as.numeric(dataset_variables[Name == species]$Frequency)>5, 2, 5)
   window_samples <- window * as.numeric(dataset_variables[Name == species]$Frequency)
   
   processed_data <- process_cont_VDBA(data, window_length = window_samples)
-  # summarised_data <- summarise_cont_VDBA(data = processed_data, window_samples)
 }
 
 fwrite(processed_data, file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))

@@ -130,3 +130,19 @@ kangaroo_data <- process_species_vdba(
   window_threshold = 5
 )
 
+individual_kangaroo_files <- list.files(file.path(base_path, "AccelerometerData", "Annett_Kangaroo", "Individual_analysis"),
+                                        pattern = "[Cc]ollar[0-9]{1,2}_processed\\.csv$",
+                                        full.names = TRUE)
+individual_impala_files <- list.files(file.path(base_path, "AccelerometerData", "Clemente_Impala", "Individual_analysis"),
+                                        pattern = "_processed\\.csv$",
+                                        full.names = TRUE)
+files <- individual_impala_files
+
+one_day <- as.numeric(dataset_variables[Name == species]$Frequency) * (60*60*max_samples)
+subset_data <- lapply(files, function(x){
+  dat <- fread(x)
+  dat <- dat[, .SD[1:min(one_day, .N)]]
+  dat
+})
+subset_data <- rbindlist(subset_data)
+fwrite(subset_data, file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
