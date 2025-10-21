@@ -25,13 +25,14 @@ vdba_stuff <- merge(vdba_data, dataset_variables, by = 'dataset')
 vdba_stuff <- vdba_stuff %>% filter(Type == "Mam")
 
 ggplot(vdba_stuff, aes(x = dataset, y = mean_vedba, colour = threshold)) +
-  geom_boxplot(outlier.shape = NA) +
-  scale_y_continuous(limits = c(0, 2)) +
+  geom_point() +
+  #scale_y_continuous(limits = c(0, 2)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 
 ggplot(vdba_stuff, aes(x = LogMass, y = log(mean_vedba))) +
   geom_point() +
-  geom_smooth(method = "lm") +
-  facet_wrap(~ threshold)
+  geom_smooth(method = "lm", group = 1) +
+  facet_wrap(~ threshold) +
+  theme_minimal()

@@ -25,7 +25,8 @@ dataset_dictionary <- list(
   "Mauny_Goat" = "Mauny_Goat_reformatted.csv",
   "Studd_Squirrel" = "Studd_Squirrel_reformatted.csv",
   "Ladds_Seal" = "Ladds_Seal_reformatted.csv",
-  "Smit_Cat" = "Smit_Cat_reformatted.csv"
+  "Smit_Cat" = "Smit_Cat_reformatted.csv",
+  "Dissanayake_Calf" = "AcTBeCalf.csv"
 )
 
 

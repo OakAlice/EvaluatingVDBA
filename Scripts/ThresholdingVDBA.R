@@ -1,14 +1,14 @@
 # Finding the active / inactive threshold for each dataset ----------------
 
 # load in the data
-data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
+data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_rescaled.csv")))
 
 data <- data %>%
-  select(ID, vedba, odba) %>%
+  select(ID, straight_vedba, calibration_vedba) %>%
   na.omit()
-ggplot(data, aes(x = vedba))+
-   geom_freqpoly() +
-   theme_minimal()
+# ggplot(data, aes(x = vedba))+
+#    geom_freqpoly() +
+#    theme_minimal()
 
 #### METHOD 1: DENSITY PLOT
 # on the edge case of the peak being 0 it spilled into negative - setting an impossible threshold
@@ -17,11 +17,11 @@ ggplot(data, aes(x = vedba))+
 # inactive_vedba <- vedba_peak * 2 # double it for the threshold
 
 ##### METHOD 2: 90th PERCENTILE
-threshold_pct <- quantile(data$vedba, probs = 0.90, na.rm = TRUE)
+threshold_pct <- quantile(data$calibration_vedba, probs = 0.90, na.rm = TRUE)
 threshold_pct <- ifelse(threshold_pct > 0.5, 0.5, threshold_pct)
 
 data <- data %>%
-  mutate(threshold = ifelse(vedba > threshold_pct, "active", "inactive"))
+  mutate(threshold = ifelse(calibration_vedba > threshold_pct, "active", "inactive"))
 
 # if ("Activity" %in% colnames(data)){
 #   # if Activity was recorded, look at whether the threshold was logical
@@ -33,22 +33,14 @@ data <- data %>%
 # now we should take the means
 summary <- data %>%
   group_by(ID, threshold) %>%
-  summarise(meanVDBA = mean(vedba),
-            minVDBA = min(vedba),
-            maxVDBA = max(vedba),
-            meanODBA = mean(odba),
-            minODBA = min(odba),
-            maxODBA = max(odba)
+  summarise(meanVDBA = mean(straight_vedba),
+            meanCalVDBA = mean(calibration_vedba)
   )
 
 overall_summary <- data %>%
   group_by(ID) %>%
-  summarise(meanVDBA = mean(vedba),
-            minVDBA = min(vedba),
-            maxVDBA = max(vedba),
-            meanODBA = mean(odba),
-            minODBA = min(odba),
-            maxODBA = max(odba)
+  summarise(meanVDBA = mean(straight_vedba),
+            meanCalVDBA = mean(calibration_vedba)
   )
 overall_summary$threshold <- "all"
 

@@ -15,7 +15,9 @@ p_load(tidyverse,
        future,
        RcppRoll,
        arrow,
-       zoo)
+       zoo,
+       R.matlab,
+       rhdf5)
 
 source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
@@ -37,6 +39,10 @@ for (dataset in species_list){
   species <- basename(dataset)
   print(species)
   
+  if (species %in% c("Clemente_Impala", "Annett_Kangaroo", "Minasandra_Hyena", "Kamminga_Horse")){
+    next
+  }
+  
   # Formatting all data sources into same structure
   if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))){
     print("already formatted")
@@ -45,21 +51,30 @@ for (dataset in species_list){
   }
   
   # Accounting for different brands and acceleration scales
-  #if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_rescaled.csv")))){
-  #  print("already rescaled")
-  #} else {
+  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_rescaled.csv")))){
+    print("already rescaled")
+  } else {
     source(file = file.path(base_path, "Scripts", "CalibratingDevices.R"))
-  #}
+  }
   
   # Generating VDBA
   #if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
-  #  print("already did this one")
+  #  print("already procecced")
   #} else {
-    source(file = file.path(base_path, "Scripts", "GenerateVDBA.R"))
+    # source(file = file.path(base_path, "Scripts", "GenerateVDBA.R"))
   #}
   
   # Finding the threshold between active and inactive for each species  
-  source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
+  #if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
+  #  print("already summarised")
+  #} else {
+    source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
+  #}
+  
+  rm(accel)
+  rm(accel2)
+  rm(processed_data)
+  rm(data)
 }
 
 
@@ -92,14 +107,15 @@ dataset_variables$dataset <- dataset_variables$Name
 summary <- merge(summary, dataset_variables, by = "dataset")
 
 # plot this
-ggplot(summary, aes(x = dataset, y= MaxVDBA, colour = Device)) +
+ggplot(summary %>% filter(Type == "Mam"), aes(x = dataset, y= MaxX, colour = Device)) +
   geom_point() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 
+
+
+
+
+
 # Plotting these results
 source(file = file.path(base_path, "Scripts", "ScalingVDBA.R"))
-
-
-
-

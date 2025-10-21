@@ -56,7 +56,8 @@ reformat_clemente_data <- function(x){
 
 # most species just read in directly but there are a few that need a bit more
 if (species != "Seriyes_Bobcat" && species != "Acacio_Stork" &&
-    species != "Minasandra_Hyena" && !species %in% unlist(source_dictionary[["Clemente_Data"]])){
+    species != "Minasandra_Hyena" && species != "Friedlaender_Whale"
+    && !species %in% unlist(source_dictionary[["Clemente_Data"]])){
   data <- fread(file.path(base_path, "AccelerometerData", species, dataset_dictionary[[species]]))
 }
 
@@ -154,6 +155,7 @@ if (species == "Wanja_Fox"){
     
     # get the accel data out
     data <- h5read(x, "A")
+    data <- as.data.table(data)
     colnames(data) <- c("Accel.X", "Accel.Y", "Accel.Z")
     
     # get the timestamps
@@ -161,14 +163,11 @@ if (species == "Wanja_Fox"){
     StartTime <- as.POSIXct(
       paste0(Times[1,1], "/", Times[1,2], "/", Times[1,3], " ", Times[1,4], ":", Times[1,5], ":", Times[1,6]),
       format = "%Y/%m/%d %H:%M:%OS")
-    
-    # get the sampling rate
-    Fs <- h5read(x, "fs")
-    
+  
     # use the sampling rate to generate a string of times
     Time <- seq(
       from = StartTime, 
-      by   = 1/Fs, # seconds between each of the saemples assuming constant rate
+      by   = 1/25, # 25 is the sampling rate
       length.out = nrow(data)
     )
     
@@ -177,10 +176,10 @@ if (species == "Wanja_Fox"){
     ID <- rep(ID_name, nrow(data))
     
     # stitch it all together
-    data <- as.data.table(data)
     data[, `:=`(Time = Time, ID = ID)]
     
     H5close() # close the file
+    data
   })
   
   data <- rbindlist(dfs)
@@ -220,7 +219,74 @@ if (species == "Wanja_Fox"){
            Accel.Y = Y,
            Accel.Z = Z)
   
-} else { # everything else
+} else if (species == "Friedlaender_Whale"){
+  
+  files <- list.files(file.path(base_path, "AccelerometerData", "Friedlaender_Whale"), 
+                      pattern = "prh.mat", recursive = TRUE, full.names = TRUE)
+  data <- lapply(files, function(x){
+    mat <- readMat(x)
+    df <- as.data.table(mat$A)  # extract the accelerometer data
+    df[, ID := tools::file_path_sans_ext(basename(x))]
+    colnames(df) <- c("Accel.X", "Accel.Y", "Accel.Z", "ID")
+    N <-nrow(df)
+    df$Time <- seq(
+      from = as.POSIXct("2000-01-01 01:01:00", format = "%Y-%m-%d %H:%M:%OS"),
+      by   = 1 / 5,  # seconds between samples
+      length.out = N
+    )
+    df
+  })
+  data <- rbindlist(data)
+  
+} else if (species == "Chakravarty_Meerkat"){
+  
+  file_path <- file.path(base_path, "AccelerometerData", "Chakravarty_Meerkat", "labelledTriaxialAccData.mat")
+  datasets <- h5ls(file_path)
+  datasets <- datasets[datasets$otype == "H5I_DATASET", ]
+  refs <-datasets$name
+  
+  accel_list <- lapply(seq_along(refs), function(i) {
+    ref_path <- refs[[i]]
+   
+    dat <- h5read(file_path, paste0("/#refs#/", ref_name))
+    dat <- as.data.table(dat)
+    setnames(dat, c("Accel.X", "Accel.Y", "Accel.Z"))
+    
+    dat[, Time := seq(
+      from = as.POSIXct("2000-01-01 01:01:00", tz = "UTC"),
+      by = 1 / as.numeric(dataset_variables[Name == species]$Frequency),
+      length.out = .N
+    )]
+    
+    numeric_id <- str_extract(ref_path, "^.{1,2}")
+    dat[, ID := numeric_id]
+    dat
+  })
+  data <- rbindlist(accel_list, use.names = TRUE)
+
+} else if (species == "Dissanayake_Calf"){
+  data <- data %>%
+    rename(Time = dateTime,
+           ID = calfId,
+           Accel.X = accX,
+           Accel.Y = accY,
+           Accel.Z = accZ)
+  
+  
+} else if (species == "Kamminga_Horse"){
+  
+  files <- list.files(file.path(base_path, "AccelerometerData", "Kamminga_Horse", "csv"), full.names = TRUE)
+  data <- lapply(files, function(x){
+    fread(x) %>% 
+      rename(Accel.X = Ax,
+             Accel.Y = Ay,
+             Accel.Z = Az,
+             Time = segment) %>%
+      mutate(ID = str_split(basename(x), "_")[[1]][3])
+  })
+  data <- rbindlist(data)
+
+} else { # everythindataset_variables} else { # everything else
   data <- reformat_eobs_data(data)
 }
 
@@ -232,6 +298,9 @@ if (!"ID" %in% colnames(data)){
 # crop the files to a maximum size
 one_day <- as.numeric(dataset_variables[Name == species]$Frequency) * (60*60*max_samples)
 data <- data[, .SD[1:min(one_day, .N)], by = ID]
+
+# when I want fewer individuals (if the dataset is too big)
+# data <- data[ID %in% unique(ID)[1:9]]
 
 # only seelct the columns we want
 data <- data[, c("ID", "Time", "Accel.X", "Accel.Y", "Accel.Z")]
