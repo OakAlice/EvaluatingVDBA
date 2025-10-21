@@ -17,7 +17,8 @@ p_load(tidyverse,
        arrow,
        zoo,
        R.matlab,
-       rhdf5)
+       rhdf5
+       )
 
 source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
@@ -27,6 +28,10 @@ source(file = file.path(base_path, "Scripts", "WithinSpeciesWithinDatasetAnalysi
 
 # Within Species Across Datsets Analysis ----------------------------------
 source(file = file.path(base_path, "Scripts", "WithinSpeciesAcrossDatasetAnalysis.R"))
+
+
+
+
 
 # Main Multi-Species Comparison -------------------------------------------
 max_samples <- 24 # in hours # the maximum samples from any individual
@@ -50,31 +55,20 @@ for (dataset in species_list){
     source(file = file.path(base_path, "Scripts", "FormattingRawData.R"))
   }
   
-  # Accounting for different brands and acceleration scales
-  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_rescaled.csv")))){
-    print("already rescaled")
-  } else {
-    source(file = file.path(base_path, "Scripts", "CalibratingDevices.R"))
-  }
-  
-  # Generating VDBA
-  #if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
-  #  print("already procecced")
+  # Accounting for different brands and acceleration scales and calculating vdba
+  #if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
+  #  print("already rescaled")
   #} else {
-    # source(file = file.path(base_path, "Scripts", "GenerateVDBA.R"))
+    source(file = file.path(base_path, "Scripts", "CalibratingDevices.R"))
   #}
   
   # Finding the threshold between active and inactive for each species  
   #if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
   #  print("already summarised")
   #} else {
-    source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
+    # source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
   #}
   
-  rm(accel)
-  rm(accel2)
-  rm(processed_data)
-  rm(data)
 }
 
 

@@ -1,11 +1,8 @@
 # Finding the active / inactive threshold for each dataset ----------------
 
 # load in the data
-data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_rescaled.csv")))
+data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
 
-data <- data %>%
-  select(ID, straight_vedba, calibration_vedba) %>%
-  na.omit()
 # ggplot(data, aes(x = vedba))+
 #    geom_freqpoly() +
 #    theme_minimal()
