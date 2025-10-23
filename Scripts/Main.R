@@ -24,10 +24,8 @@ source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 
 # Within Species and Dataset Analysis -------------------------------------
-source(file = file.path(base_path, "Scripts", "WithinSpeciesWithinDatasetAnalysis.R"))
+source(file = file.path(base_path, "Scripts", "IndividualAnalysis.R"))
 
-# Within Species Across Datsets Analysis ----------------------------------
-source(file = file.path(base_path, "Scripts", "WithinSpeciesAcrossDatasetAnalysis.R"))
 
 
 
@@ -79,34 +77,51 @@ processed_files <- lapply(species_list, function(x) {
    list.files(x, pattern = "_processed.csv$", full.names = TRUE)
 })
 processed_files <- unlist(processed_files)
+excluded_species <- c("Clemente_Impala", "Annett_Kangaroo", "Minasandra_Hyena", "Kamminga_Horse")
+processed_files <- processed_files[!basename(dirname(processed_files)) %in% excluded_species]
 
-summary_stats <- lapply(processed_files, function(x) {
+data <- lapply(processed_files, function(x) {
   print(paste0("processing ", x))
-  fread(x) %>%
-    summarise(
-      MaxX = max(Accel.X, na.rm = TRUE),
-      MinX = min(Accel.X, na.rm = TRUE),
-      MaxDynX = max(ax_dynamic, na.rm = TRUE),
-      MinDynX = min(ax_dynamic, na.rm = TRUE),
-      MaxStatX = max(ax_static, na.rm = TRUE),
-      MinStatX = min(ax_static, na.rm = TRUE),
-      MaxVDBA = max(vedba, na.rm = TRUE),
-      MinVDBA = min(vedba, na.rm = TRUE)
-    ) %>%
-    mutate(dataset = paste(str_split(basename(x), "_")[[1]][1],
-                           str_split(basename(x), "_")[[1]][2], sep = "_"))
+  dat <- fread(x) 
+  # Filter only columns that exist in dat (because non-rescaled ones didnt change)
+  # fill if they were empty (i.e., not reca;librated)
+  for (i in 2:5) {
+    col_name <- paste0("vedba", i)
+    
+    if (!col_name %in% names(dat)) {
+      # If column doesn't exist, create it as a copy of vedba1
+      dat[[col_name]] <- dat$vedba1
+    }
+  }
+  
+  summary_exprs <- map(c("vedba1", "vedba2", "vedba3", "vedba4", "vedba5"), function(col) {
+    exprs(
+      !!paste0("min_", col) := min(!!sym(col), na.rm = TRUE),
+      !!paste0("mean_", col) := mean(!!sym(col), na.rm = TRUE),
+      !!paste0("max_", col) := max(!!sym(col), na.rm = TRUE)
+    )
+  }) |> unlist(recursive = FALSE)
+  summary <- dat %>% summarise(!!!summary_exprs)
+  summary$dataset <- paste(str_split(basename(x), "_")[[1]][1],
+                                     str_split(basename(x), "_")[[1]][2], sep = "_")
+  summary
 })
-summary <- rbindlist(summary_stats)
+
+summary <- rbindlist(data, fill = TRUE)
 dataset_variables$dataset <- dataset_variables$Name
 summary <- merge(summary, dataset_variables, by = "dataset")
 
+
 # plot this
-ggplot(summary %>% filter(Type == "Mam"), aes(x = dataset, y= MaxX, colour = Device)) +
+ggplot(summary %>% filter(Type == "Mam"), aes(x = dataset, y= mean_vedba2, colour = Device)) +
   geom_point() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 
-
+ggplot(summary, aes(x = LogMass, y = mean_vedba5)) +
+  geom_point() +
+  geom_smooth(method = "lm", group = 1) +
+  theme_minimal()
 
 
 
