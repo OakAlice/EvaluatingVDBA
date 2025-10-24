@@ -12,7 +12,10 @@ vdba_data <- lapply(summary_files, function(x){
   dat
 
 })
-vdba_data <- rbindlist(vdba_data)
+vdba_data <- rbindlist(vdba_data, fill = TRUE)
+
+vdba_data <- vdba_data %>%
+  filter(dataset %in% Gs_species)
 
 # summarise by dataset
 vdba_data <- vdba_data %>% group_by(dataset, threshold) %>%
@@ -22,7 +25,7 @@ dataset_variables$dataset <- dataset_variables$Name
 vdba_stuff <- merge(vdba_data, dataset_variables, by = 'dataset')
 
 # remove the non-mammal data
-vdba_stuff <- vdba_stuff %>% filter(Type == "Mam")
+# vdba_stuff <- vdba_stuff %>% filter(Type == "Mam")
 
 ggplot(vdba_stuff, aes(x = dataset, y = mean_vedba, colour = threshold)) +
   geom_point() +
@@ -31,8 +34,9 @@ ggplot(vdba_stuff, aes(x = dataset, y = mean_vedba, colour = threshold)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 
-ggplot(vdba_stuff, aes(x = LogMass, y = log(mean_vedba))) +
+ggplot(vdba_stuff, aes(x = LogMass, y = log(mean_vedba), colour = threshold)) +
   geom_point() +
-  geom_smooth(method = "lm", group = 1) +
-  facet_wrap(~ threshold) +
-  theme_minimal()
+  geom_smooth(method = "lm") +
+  theme_minimal() +
+  facet_wrap(~DeviceAttachment)
+

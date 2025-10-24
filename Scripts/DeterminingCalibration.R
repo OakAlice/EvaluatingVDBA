@@ -65,7 +65,8 @@ calculate_static_accel <- function(accel, sampling_style, freq){
   return(static_accel_mean)
 }
 
-# Code --------------------------------------------------------------------
+
+# Identify which ones are already in Gs -----------------------------------
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
 
 # identify the data that are already in Gs
@@ -91,50 +92,4 @@ Gs <- lapply(species_list, function(x){
 Gs <- rbindlist(Gs, fill = TRUE)
 Gs$rescale <- ifelse(Gs$static_accel_mean < 1.5 & Gs$static_accel_mean > 0.5, "G", "Other")
 Gs_species <- unique(unlist(Gs$species[Gs$rescale == "G"]))
-
-# plot the ones that are already in Gs
-for (species in Gs_species){
-  
-  accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
-  sampling_style <- dataset_variables[Name == species]$SamplingStyle
-  freq <- as.numeric(dataset_variables[Name == species]$Frequency)
-  
-  if (sampling_style == "Continuous") {
-    
-    win <- 10 * freq
-    # calculate the static accelerations
-    ax_static <- frollmean(accel$Accel.X, n = win, align = "center", fill = NA)
-    ay_static <- frollmean(accel$Accel.Y, n = win, align = "center", fill = NA)
-    az_static <- frollmean(accel$Accel.Z, n = win, align = "center", fill = NA)
-    
-    # get the dynamic component 
-    ax_dynamic <- accel$Accel.X - ax_static
-    ay_dynamic <- accel$Accel.Y - ay_static
-    az_dynamic <- accel$Accel.Z - az_static
-    
-    vedba <- sqrt(ax_dynamic^2 + ay_dynamic^2 + az_dynamic^2)
-    
-  } else { # burst
-    
-    burst_means <- accel[, .(
-      mean_X = mean(Accel.X, na.rm = TRUE),
-      mean_Y = mean(Accel.Y, na.rm = TRUE),
-      mean_Z = mean(Accel.Z, na.rm = TRUE)
-    ), by = .(ID, burst_id)]
-    
-    accel <- merge(accel, burst_means, by = c("ID", "burst_id"), all.x = TRUE)
-    
-    accel[, ax_dynamic := Accel.X - mean_X]
-    accel[, ay_dynamic := Accel.Y - mean_Y]
-    accel[, az_dynamic := Accel.Z - mean_Z]
-    
-    vedba <- sqrt(accel$ax_dynamic^2 + accel$ay_dynamic^2 + accel$az_dynamic^2)
-    
-  }
-  
-}
-
-
-
-
-
+Gs_species <- na.omit(Gs_species)

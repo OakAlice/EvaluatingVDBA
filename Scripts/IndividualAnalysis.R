@@ -84,7 +84,7 @@ process_individual_vdba <- function(species,
       
       # ggplot(df[1:10000, ], aes(x = seq(1:10000), y = vedba, colour = threshold)) + geom_point()
       
-      fwrite(data, file.path(base_path, "AccelerometerData", species, 
+      fwrite(df, file.path(base_path, "AccelerometerData", species, 
                              "Individual_Analyses",
                              paste0(species, collar_number, "_summary.csv")))
     
@@ -172,10 +172,6 @@ quoll_data <- process_individual_vdba(
   window_threshold = 5
 )
 
-
-
-
-
 # Analysis ----------------------------------------------------------------
 
 impala_data <- fread(file.path(base_path, "AccelerometerData", "Clemente_Impala",
@@ -195,7 +191,7 @@ all_data <- rbind(impala_data, kangaroo_data, quoll_data, fill = TRUE) %>%
 
 
 # Plot example
-ggplot(quoll_data, aes(x = LogMass, y = log(meanVDBA), colour = threshold, shape = Sex)) +
+ggplot(all_data, aes(x = LogMass, y = log(meanVDBA), colour = threshold, shape = Sex)) +
   geom_point() +
   geom_smooth(method = "lm") +
   facet_wrap(~Dataset, scales = "free") +
