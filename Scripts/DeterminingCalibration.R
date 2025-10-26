@@ -80,16 +80,23 @@ Gs <- lapply(species_list, function(x){
   
   accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
   
+  maxX <- max(accel$Accel.X)
+  minX <- min(accel$Accel.X)
+  meanX <- mean(accel$Accel.X)
+  medianX <- median(accel$Accel.X)
+  
   sampling_style <- dataset_variables[Name == species]$SamplingStyle
   freq <- as.numeric(dataset_variables[Name == species]$Frequency)
   
   static_accel_mean <- calculate_static_accel(accel, sampling_style, freq)
   
-  data.frame(species, static_accel_mean)
+  table <- data.frame(static_accel_mean, maxX, minX, meanX, medianX)
+  table
   }
 })
 
 Gs <- rbindlist(Gs, fill = TRUE)
 Gs$rescale <- ifelse(Gs$static_accel_mean < 1.5 & Gs$static_accel_mean > 0.5, "G", "Other")
+fwrite(Gs, file.path(base_path, "Output", "G_scaling.csv"))
 Gs_species <- unique(unlist(Gs$species[Gs$rescale == "G"]))
 Gs_species <- na.omit(Gs_species)

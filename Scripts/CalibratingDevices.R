@@ -66,14 +66,14 @@ for (species in Gs_species){
   static_accel <- accel[static_idx, ]
   threshold_pct <- max(static_accel$vedba, na.rm = TRUE) # max acceleration in the flat periods
   
-  df <- df %>%
+  accel <- accel %>%
     mutate(threshold = ifelse(vedba > threshold_pct, "active", "inactive"))
   
   # Save overall species summary
-  fwrite(df, file.path(base_path, "AccelerometerData", species, 
+  fwrite(accel, file.path(base_path, "AccelerometerData", species, 
                        paste0(species, "_processed.csv")))
   
-  summary <- df %>%
+  summary <- accel %>%
     group_by(ID, threshold) %>%
     summarise(
       meanVDBA = mean(vedba),
@@ -82,7 +82,7 @@ for (species in Gs_species){
       .groups = "drop"
     )
   
-  overall_summary <- df %>%
+  overall_summary <- accel %>%
     group_by(ID) %>%
     summarise(
       meanVDBA = mean(vedba),
@@ -97,8 +97,6 @@ for (species in Gs_species){
   fwrite(vedba_stats, file.path(base_path, "AccelerometerData", species, 
                                 paste0(species, "_summary.csv")))
 }
-
-
 
 # plot the ones not in Gs -------------------------------------------------
 

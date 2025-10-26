@@ -1,9 +1,7 @@
 # Dataset Specific Testing ------------------------------------------------
 # These daatsets are too big to be processed typically, therefore I had to break it up
 
-
 # Function to process the large datasets ----------------------------------
-
 process_individual_vdba <- function(species,
                                  base_path,
                                  file_pattern = ".*\\.csv$",
@@ -61,9 +59,9 @@ process_individual_vdba <- function(species,
         dat$vedba <- vedba
       
       # Save processed raw file
-      # fwrite(dat,
-      #        file.path(base_path, "AccelerometerData", species,
-      #                  paste0(species, "_", collar_number, "_processed.csv")))
+      fwrite(dat,
+              file.path(base_path, "AccelerometerData", species, "Individual_Analyses",
+                        paste0(species, "_", collar_number, "_processed.csv")))
         
       # Threshold VDBA ----------------------------------------------------------
       df <- dat %>%
@@ -190,11 +188,32 @@ all_data <- rbind(impala_data, kangaroo_data, quoll_data, fill = TRUE) %>%
   select(Dataset, ID, Sex, threshold, meanVDBA, minVDBA, maxVDBA, LogMass)
 
 
-# Plot example
-ggplot(all_data, aes(x = LogMass, y = log(meanVDBA), colour = threshold, shape = Sex)) +
+# Plot each species independently
+p1 <- ggplot(all_data, aes(x = LogMass, y = log(meanVDBA), colour = threshold, shape = Sex)) +
   geom_point() +
   geom_smooth(method = "lm") +
   facet_wrap(~Dataset, scales = "free") +
   theme_minimal()
+
+# Save the plot
+ggsave(
+  filename = file.path(base_path, "Output", "Plots", "Species_Individuals_VDBA_Mass.png"),
+  plot = p1,
+  width = 8, height = 6, dpi = 300 
+)
+
+# plot all the individuals togetehr
+p2 <- ggplot(all_data, aes(x = LogMass, y = log(meanVDBA), colour = threshold)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_minimal()
+
+# Save the plot
+ggsave(
+  filename = file.path(base_path, "Output", "Plots", "All_Individuals_VDBA_Mass.png"),
+  plot = p2,
+  width = 8, height = 6, dpi = 300 
+)
+
 
 

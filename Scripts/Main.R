@@ -23,11 +23,15 @@ p_load(tidyverse,
 source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 
+
+
+# Experimenting with Sampling Rate ----------------------------------------
+source(file = file.path(base_path, "Scripts", "SamplingRateExperiment.R"))
+
+
+
 # Within Species and Dataset Analysis -------------------------------------
 source(file = file.path(base_path, "Scripts", "IndividualAnalysis.R"))
-
-
-
 
 
 
@@ -42,7 +46,7 @@ for (dataset in species_list){
   species <- basename(dataset)
   print(species)
   
-  if (species %in% c("Clemente_Impala", "Annett_Kangaroo", "Minasandra_Hyena", "Kamminga_Horse")){
+  if (species %in% c("Clemente_Impala", "Annett_Kangaroo")){
     next
   }
   
@@ -54,20 +58,29 @@ for (dataset in species_list){
   }
   
   # Accounting for different brands and acceleration scales and calculating vdba
-  #if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
-  #  print("already rescaled")
-  #} else {
+  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
+    print("already rescaled")
+  } else {
     source(file = file.path(base_path, "Scripts", "CalibratingDevices.R"))
-  #}
+  }
   
   # Finding the threshold between active and inactive for each species  
-  #if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
-  #  print("already summarised")
-  #} else {
-    # source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
-  #}
+  if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
+    print("already summarised")
+  } else {
+     source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
+  }
   
 }
+
+
+
+
+
+
+
+
+
 
 
 
