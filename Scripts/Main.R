@@ -23,6 +23,7 @@ p_load(tidyverse,
 
 source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
+source(file = file.path(base_path, "Scripts", "GeneralFunctions.R")) # general functions
 
 
 
@@ -58,20 +59,31 @@ for (dataset in species_list){
     source(file = file.path(base_path, "Scripts", "FormattingRawData.R"))
   }
   
-  # Accounting for different brands and acceleration scales and calculating vdba
-  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))){
-    print("already rescaled")
+  # Downsampling to the same sampling rate
+  standard_sampling_rate <- 10
+  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv")))){
+    print("already resampled")
   } else {
-    source(file = file.path(base_path, "Scripts", "CalibratingDevices.R"))
+    source(file = file.path(base_path, "Scripts", "DownsamplingFormattedData.R"))
   }
   
-  # Finding the threshold between active and inactive for each species  
-  if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
-    print("already summarised")
-  } else {
-     source(file = file.path(base_path, "Scripts", "ThresholdingVDBA.R"))
+}
+
+# Accounting for different acceleration scales
+source(file = file.path(base_path, "Scripts", "DeterminingCalibration.R"))
+
+for (dataset in species_list){
+  species <- basename(dataset)
+  print(species)
+  if (species %in% c("Clemente_Impala", "Annett_Kangaroo", "Mauny_Goat")){
+    next
   }
-  
+  # Calculating and thresholding between active and inactive for each species
+  # if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
+  #   print("already summarised")
+  # } else {
+     source(file = file.path(base_path, "Scripts", "GeneratingVDBA.R"))
+  #}
 }
 
 

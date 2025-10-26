@@ -60,8 +60,7 @@ generate_vdba <- function(accel, freq){
 
 # Code --------------------------------------------------------------------
 
-species <- c("Friedlaender_Whale", "Chakravarty_Meerkat", "Clemente_Echidna")
-
+species <- c("Kamminga_Horse", "Chakravarty_Meerkat", "Clemente_Echidna")
 
 summaries <- lapply(species, function(x){
   print(x)

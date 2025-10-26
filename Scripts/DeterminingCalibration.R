@@ -7,18 +7,6 @@
 # Considered to be in Gs when the static acceleration of flat spots = 1
 
 # Functions ---------------------------------------------------------------
-detect_bursts <- function(data, gap_threshold = 1) {
-  setDT(data)
-  
-  data <- data[order(ID, Time)]  # ensure sorted by ID and time
-  id_change <- c(TRUE, diff(as.integer(factor(data$ID))) != 0)  # TRUE where ID changes
-  time_gap <- c(FALSE, diff(data$Time) > gap_threshold)
-  new_burst <- id_change | time_gap
-  data[, burst_id := cumsum(new_burst)]
-  
-  return(data)
-}
-
 calculate_static_accel <- function(accel, sampling_style, freq){
   # Determine whether it needs to be rescaled or not ------------------------
   if (sampling_style == "Continuous") {
@@ -76,7 +64,13 @@ Gs <- lapply(species_list, function(x){
     NULL
   } else {
   
-  accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
+  resampled_data <- file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv"))
+  if (file.exists(resampled_data)){
+    accel <- fread(resampled_data)
+  } else {
+    accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
+    print("note that this data wasn't resampled... its samplign rate was too low")
+  }
   
   maxX <- round(max(accel$Accel.X),3)
   minX <- round(min(accel$Accel.X),3)
@@ -105,5 +99,22 @@ Gs_species <- na.omit(Gs_species)
 
 calib_species <- setdiff(basename(species_list), Gs_species)
 
-Calib
-
+lapply(calib_species, function(x){
+  species <- x
+  
+  if (species %in% c("Clemente_Impala", "Annett_Kangaroo", "Minasandra_Hyena", "Kamminga_Horse")){
+    NULL
+  } else {
+    
+    calib_factor <- Gs$static_accel_mean[Gs$species == species]
+    
+    accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
+    
+    accel[, Accel.X := Accel.X / calib_factor]
+    accel[, Accel.Y := Accel.Y / calib_factor]
+    accel[, Accel.Z := Accel.Z / calib_factor]
+    
+    fwrite(accel, file.path(base_path, "AccelerometerData", species, paste0(species, "_recalibrated.csv")))
+  }
+  
+})
