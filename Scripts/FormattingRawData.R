@@ -243,24 +243,34 @@ if (species == "Wanja_Fox"){
   file_path <- file.path(base_path, "AccelerometerData", "Chakravarty_Meerkat", "labelledTriaxialAccData.mat")
   datasets <- h5ls(file_path)
   datasets <- datasets[datasets$otype == "H5I_DATASET", ]
-  refs <-datasets$name
+  refs <- datasets$name
+  refs <- refs[1:82606]
   
   accel_list <- lapply(seq_along(refs), function(i) {
     ref_path <- refs[[i]]
+    print(i)
    
-    dat <- h5read(file_path, paste0("/#refs#/", ref_name))
-    dat <- as.data.table(dat)
-    setnames(dat, c("Accel.X", "Accel.Y", "Accel.Z"))
+    dat <- h5read(file_path, paste0("/#refs#/", ref_path))
+    tryCatch({
+      dat <- as.data.table(dat)
+      
+      setnames(dat, c("Accel.X", "Accel.Y", "Accel.Z"))
+      
+      dat[, Time := seq(
+        from = as.POSIXct("2000-01-01 01:01:00", tz = "UTC"),
+        by = 1 / as.numeric(dataset_variables[Name == species]$Frequency),
+        length.out = .N
+      )]
+      
+      numeric_id <- str_extract(ref_path, "^.{1,2}")
+      dat[, ID := numeric_id]
+      dat
+      
+    }, error = function(e) {
+      message("Skipping: not data")
+      NULL
+    })
     
-    dat[, Time := seq(
-      from = as.POSIXct("2000-01-01 01:01:00", tz = "UTC"),
-      by = 1 / as.numeric(dataset_variables[Name == species]$Frequency),
-      length.out = .N
-    )]
-    
-    numeric_id <- str_extract(ref_path, "^.{1,2}")
-    dat[, ID := numeric_id]
-    dat
   })
   data <- rbindlist(accel_list, use.names = TRUE)
 
