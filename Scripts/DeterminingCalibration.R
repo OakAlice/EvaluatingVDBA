@@ -6,8 +6,6 @@
 # determine which datasets are alreay in Gs 
 # Considered to be in Gs when the static acceleration of flat spots = 1
 
-
-
 # Functions ---------------------------------------------------------------
 detect_bursts <- function(data, gap_threshold = 1) {
   setDT(data)
@@ -75,28 +73,37 @@ Gs <- lapply(species_list, function(x){
   species <- basename(x)
     
   if (species %in% c("Clemente_Impala", "Annett_Kangaroo", "Minasandra_Hyena", "Kamminga_Horse")){
-    data.frame(species, NA)
+    NULL
   } else {
   
   accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
   
-  maxX <- max(accel$Accel.X)
-  minX <- min(accel$Accel.X)
-  meanX <- mean(accel$Accel.X)
-  medianX <- median(accel$Accel.X)
+  maxX <- round(max(accel$Accel.X),3)
+  minX <- round(min(accel$Accel.X),3)
+  meanX <- round(mean(accel$Accel.X),3)
+  medianX <- round(median(accel$Accel.X),3)
   
   sampling_style <- dataset_variables[Name == species]$SamplingStyle
   freq <- as.numeric(dataset_variables[Name == species]$Frequency)
   
   static_accel_mean <- calculate_static_accel(accel, sampling_style, freq)
   
-  table <- data.frame(static_accel_mean, maxX, minX, meanX, medianX)
+  table <- data.frame(species, static_accel_mean, maxX, minX, meanX, medianX)
   table
   }
 })
 
 Gs <- rbindlist(Gs, fill = TRUE)
 Gs$rescale <- ifelse(Gs$static_accel_mean < 1.5 & Gs$static_accel_mean > 0.5, "G", "Other")
+Gs$static_accel_mean <- round(Gs$static_accel_mean, 3)
 fwrite(Gs, file.path(base_path, "Output", "G_scaling.csv"))
 Gs_species <- unique(unlist(Gs$species[Gs$rescale == "G"]))
 Gs_species <- na.omit(Gs_species)
+
+# For the ones not in Gs, determine how to scale them ---------------------
+# of the data I currently have, there appears to be a consistent scale to the non-G data
+
+calib_species <- setdiff(basename(species_list), Gs_species)
+
+Calib
+

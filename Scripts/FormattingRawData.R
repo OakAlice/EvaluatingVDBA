@@ -195,6 +195,16 @@ if (species == "Wanja_Fox"){
       files_by_subdir <- split(all_files, subdirs)
       first40_per_subdir <- lapply(files_by_subdir, function(x) head(x, 40))
       files <- unlist(first40_per_subdir, use.names = FALSE)
+      
+      dfs <- lapply(files, function(x){
+        dat <- fread(x)
+        dat <- dat[, 2:5]
+        colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
+        dat$Time <- as.POSIXct((dat$Time - 719529)*86400, origin = "1970-01-01", tz = "UTC")
+        dat$ID <- tools::file_path_sans_ext(basename(x))
+        dat
+      })
+
   } else {
     pattern_dictionary <- list("Annett_Kangaroo" = "Collar[0-9]*\\.csv$",
                                "Annett_Possum" = "^[0-9]{5}_.+\\.csv$",
@@ -204,11 +214,13 @@ if (species == "Wanja_Fox"){
                                "Gaschk_Quoll" = "_Accel")
     
     files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = pattern_dictionary[[species]], ignore.case = TRUE)
-  }
-  
+
   dfs <- lapply(files, function(x){
     reformat_clemente_data(x)
   })
+
+  }
+  
   data <- rbindlist(dfs)
   rm(dfs)
   

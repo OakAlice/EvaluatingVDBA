@@ -58,41 +58,71 @@ generate_vdba <- function(accel, freq){
               summary = sum))
 }
 
-
 # Code --------------------------------------------------------------------
-species <- "Chakravarty_Meerkat"
 
-# generate the datasets and generate the stats
-data100 <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
+species <- c("Friedlaender_Whale", "Chakravarty_Meerkat", "Clemente_Echidna")
 
-freqs <- c(100, 50, 25, 10, 5, 1)
-freqs_dict <- list( # define how to downsample them
-  `100` = 1,
-  `50`  = 2,
-  `25`  = 4,
-  `10`  = 10,
-  `5`   = 20,
-  `1`   = 100
-)
 
-vedba_stats <- lapply(freqs, function(x) {
+summaries <- lapply(species, function(x){
+  print(x)
   
-  # subsample the data
-  dat <- data100[seq(1, .N, by = freqs_dict[[as.character(x)]])]
-  summary <- generate_vdba(dat, x)$summary
-  summary$freq <- x
+  # generate the datasets and generate the stats
+  data100 <- fread(file.path(base_path, "AccelerometerData", x, paste0(x, "_reformatted.csv")))
   
-  summary
+  freqs <- c(100, 50, 25, 10, 5, 1)
+  freqs_dict <- list( # define how to downsample them
+    `100` = 1,
+    `50`  = 2,
+    `25`  = 4,
+    `10`  = 10,
+    `5`   = 20,
+    `1`   = 100
+  )
+  
+  vedba_stats <- lapply(freqs, function(ii) {
+    
+    # subsample the data
+    dat <- data100[seq(1, .N, by = freqs_dict[[as.character(ii)]])]
+    summary <- generate_vdba(dat, ii)$summary
+    summary$freq <- ii
+    
+    summary
+  })
+  
+  # Combine
+  vedba_stats <- rbindlist(vedba_stats, fill = TRUE)
+  vedba_stats$dataset <- x
+  
+  vedba_stats
 })
 
-# Combine
-vedba_stats <- rbindlist(vedba_stats, fill = TRUE)
+vedba_stats <- rbindlist(summaries)
+
+# save that shite
+fwrite(vedba_stats, file.path(base_path, "Output", "Subsampling_experiments.csv"))
+# vedba_stats <- fread(file.path(base_path, "Output", "Subsampling_experiments.csv"))
+
+# test whetehr the sampling rate has a significant effect
+summary(aov(maxVDBA ~ as.factor(freq) + as.factor(dataset), data = vedba_stats))
+model <- lmer(maxVDBA ~ as.factor(freq) + (1 | dataset), data = vedba_stats)
+summary(model)
+
+
+summary(aov(meanVDBA ~ as.factor(freq) + as.factor(dataset), data = vedba_stats))
+model <- lmer(meanVDBA ~ as.factor(freq) + (1 | dataset), data = vedba_stats)
+summary(model)
 
 # plot
-ggplot(vedba_stats, aes(x = freq, y = meanVDBA, colour = as.factor(ID))) +
-  geom_point() +
+ggplot(vedba_stats, aes(x = as.factor(freq), y = maxVDBA, colour = as.factor(dataset))) +
+  geom_boxplot() +
   theme_minimal() +
   theme(legend.position = "none")
+# plot
+ggplot(vedba_stats, aes(x = as.factor(freq), y = meanVDBA, colour = as.factor(dataset))) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none")
+
 
 
 

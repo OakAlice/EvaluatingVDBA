@@ -17,7 +17,8 @@ p_load(tidyverse,
        arrow,
        zoo,
        R.matlab,
-       rhdf5
+       rhdf5,
+       glmmTMB
        )
 
 source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
