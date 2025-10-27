@@ -80,7 +80,7 @@ Gs <- lapply(species_list, function(x){
   sampling_style <- dataset_variables[Name == species]$SamplingStyle
   freq <- as.numeric(dataset_variables[Name == species]$Frequency)
   
-  static_accel_mean <- calculate_static_accel(accel, sampling_style, freq)
+  static_accel_mean <- calculate_static_accel(accel, sampling_style, freq = 10) # because the frequency is 10Hz now
   
   table <- data.frame(species, static_accel_mean, maxX, minX, meanX, medianX)
   table
