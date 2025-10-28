@@ -20,6 +20,20 @@ vdba_data <- vdba_data %>%
 dataset_variables$dataset <- dataset_variables$Name
 vdba_stuff <- merge(vdba_data, dataset_variables, by = 'dataset')
 
+# find the species calibration settings
+Gs <- fread(file.path(base_path, "Output", "G_scaling.csv"))
+Gs_species <- unique(unlist(Gs$species[Gs$rescale == "G"]))
+Gs_species <- na.omit(Gs_species)
+
+
+# remove the non-mammal data
+vdba_stuff <- vdba_stuff %>% 
+  # filter(Type == "Mam") %>%
+  # filter(Zone == "Land") %>%
+  # filter(dataset %in% Gs_species) %>%
+  filter(DeviceAttachment == "Collar") %>%
+  filter(!dataset == "Chakravarty_Meerkat")
+
 # summarise by dataset
 # vdba_stuff <- vdba_stuff %>% group_by(dataset, threshold, LogMass, Name) %>%
 #   summarise(meanVDBA = mean(meanVDBA),
@@ -27,22 +41,37 @@ vdba_stuff <- merge(vdba_data, dataset_variables, by = 'dataset')
 #             minVDBA = mean(minVDBA)
 #             )
 
-# remove the non-mammal data
-# vdba_stuff <- vdba_stuff %>% filter(Type == "Mam")
-
-ggplot(vdba_stuff, aes(x = dataset, y = meanVDBA, colour = threshold)) +
+ggplot(vdba_stuff, aes(x = dataset, y = log10(maxVDBA), colour = threshold)) +
   geom_point() +
   #scale_y_continuous(limits = c(0, 2)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 
-ggplot(vdba_stuff, aes(x = LogMass, y = log10(maxVDBA), shape = threshold, colour = Name)) +
+ggplot(vdba_stuff, aes(x = LogMass, y = log10(meanVDBA), shape = threshold, colour = Name)) +
   geom_point() +
   geom_smooth(method = "lm", aes(group = threshold, colour = threshold)) +
   theme_minimal() #+
  # facet_wrap(~DeviceAttachment)
 
+summary(lm(log10(meanVDBA) ~ LogMass, data = vdba_stuff))
 
-summary(glmmTMB(maxVDBA ~ LogMass + (1|Frequency), vdba_stuff, family = gaussian()))
+
+
+
+vdba_grouoed <- vdba_stuff %>% group_by(dataset, threshold, LogMass, Name) %>%
+     summarise(meanVDBA = mean(meanVDBA),
+             maxVDBA = mean(maxVDBA),
+               minVDBA = mean(minVDBA)
+               )
+ggplot(vdba_grouoed, aes(x = LogMass, y = log10(maxVDBA), shape = threshold, colour = Name)) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(group = threshold, colour = threshold)) +
+  theme_minimal()
+
+
+
+
+
+summary(glmmTMB(maxVDBA ~ LogMass, vdba_stuff, family = gaussian()))
 

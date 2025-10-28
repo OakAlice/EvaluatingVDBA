@@ -13,18 +13,17 @@ Calib_species <- na.omit(unique(unlist(Gs$species[Gs$rescale == "Other"])))
 Gs_species <- na.omit(unique(unlist(Gs$species[Gs$rescale == "G"])))
 
   if (species %in% Gs_species){
-    accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
-    next
+    accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv")))
   } else {
     accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_recalibrated.csv")))
   }
   
   sampling_style <- dataset_variables[Name == species]$SamplingStyle
-  freq <- as.numeric(dataset_variables[Name == species]$Frequency)
+  # freq <- as.numeric(dataset_variables[Name == species]$Frequency) # I've now set it to be 10 for all
   
   if (sampling_style == "Continuous") {
     
-    win <- 10 * freq
+    win <- 10 * 10 # because the frequency is 10 for all datasets now
     # calculate the static accelerations
     ax_static <- frollmean(accel$Accel.X, n = win, align = "center", fill = NA)
     ay_static <- frollmean(accel$Accel.Y, n = win, align = "center", fill = NA)
@@ -71,6 +70,7 @@ Gs_species <- na.omit(unique(unlist(Gs$species[Gs$rescale == "G"])))
   threshold_pct <- max(static_accel$vedba, na.rm = TRUE) # max acceleration in the flat periods
   
   accel <- accel %>%
+    na.omit() %>%
     mutate(threshold = ifelse(vedba > threshold_pct, "active", "inactive"))
   
   # Save overall species summary
@@ -80,18 +80,18 @@ Gs_species <- na.omit(unique(unlist(Gs$species[Gs$rescale == "G"])))
   summary <- accel %>%
     group_by(ID, threshold) %>%
     summarise(
-      meanVDBA = mean(vedba),
-      minVDBA = min(vedba),
-      maxVDBA = max(vedba),
+      meanVDBA = mean(vedba, na.rm = TRUE),
+      minVDBA = min(vedba, na.rm = TRUE),
+      maxVDBA = max(vedba, na.rm = TRUE),
       .groups = "drop"
     )
   
   overall_summary <- accel %>%
     group_by(ID) %>%
     summarise(
-      meanVDBA = mean(vedba),
-      minVDBA = min(vedba),
-      maxVDBA = max(vedba),
+      meanVDBA = mean(vedba, na.rm = TRUE),
+      minVDBA = min(vedba, na.rm = TRUE),
+      maxVDBA = max(vedba, na.rm = TRUE),
       .groups = "drop"
     ) %>%
     mutate(threshold = "all")
