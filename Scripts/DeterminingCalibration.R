@@ -21,7 +21,7 @@ calculate_static_accel <- function(accel, sampling_style, freq){
     #   geom_density()
     
     # Identify static periods (lowest variance) and estimate the VDBA in those spots
-    static_idx <- which(accel$rolling_sd < quantile(accel$rolling_sd, 0.25, na.rm = TRUE))
+    static_idx <- which(accel$rolling_sd <= quantile(accel$rolling_sd, 0.25, na.rm = TRUE))
     static_accel <- accel[static_idx, ]
     static_accel_mean <- mean(static_accel$mag, na.rm = TRUE)
     print(paste0("Average acceleration when the device is still: ", static_accel_mean))
@@ -60,7 +60,7 @@ Gs <- lapply(species_list, function(x){
   
   species <- basename(x)
     
-  if (species %in% c("Clemente_Impala", "Annett_Kangaroo", "Minasandra_Hyena", "Kamminga_Horse")){
+  if (species %in% c("Clemente_Impala", "Annett_Kangaroo")){
     NULL
   } else {
   
@@ -80,6 +80,7 @@ Gs <- lapply(species_list, function(x){
   sampling_style <- dataset_variables[Name == species]$SamplingStyle
   freq <- as.numeric(dataset_variables[Name == species]$Frequency)
   
+  print(species)
   static_accel_mean <- calculate_static_accel(accel, sampling_style, freq = 10) # because the frequency is 10Hz now
   
   table <- data.frame(species, static_accel_mean, maxX, minX, meanX, medianX)

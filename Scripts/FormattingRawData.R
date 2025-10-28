@@ -6,8 +6,10 @@
 # most species just read in directly but there are a few that need a bit more
 if (species != "Seriyes_Bobcat" && species != "Acacio_Stork" &&
     species != "Minasandra_Hyena" && species != "Friedlaender_Whale"
+    && species != "Mauny_Goat" && species != "Chakravarty_Meerkat" 
+    && species != "Ladds_Seal"
     && !species %in% unlist(source_dictionary[["Clemente_Data"]])){
-  data <- fread(file.path(base_path, "AccelerometerData", species, dataset_dictionary[[species]]))
+  data <- fread(file.path(base_path, "AccelerometerData", species, "raw", dataset_dictionary[[species]]))
 }
 
 if (species == "Wanja_Fox"){
@@ -54,36 +56,11 @@ if (species == "Wanja_Fox"){
            Activity = Behaviour)
 
 } else if (species == "Seriyes_Bobcat"){
-  files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = "of9\\.csv$")
+  files <- list.files(file.path(base_path, "AccelerometerData", species, "raw"), full.names = TRUE, pattern = "of9\\.csv$")
   dfs <- lapply(files, function(x){
     reformat_eobs_data(fread(x))
   })
   data <- rbindlist(dfs, fill = TRUE)
-
-} else if (species == "Acacio_Stork"){
-  files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = "_part\\.csv$")
-  
-  df1 <- fread(file.path(base_path, "AccelerometerData/Acacio_Stork/White Stork Adults 2017_part.csv")) %>%
-    rename(Accel.X = `acceleration-raw-x`,
-             Accel.Y = `acceleration-raw-y`,
-             Accel.Z = `acceleration-raw-z`,
-             ID = `tag-local-identifier`,
-             Time = timestamp,
-             Event.ID = `event-id`) %>%
-    select(Accel.X, Accel.Y, Accel.Z, Time, ID, Event.ID)
-  
-  df2 <- fread(file.path(base_path, "AccelerometerData/Acacio_Stork/White Stork Adults 2018_part.csv")) %>%
-    mutate(DateTime = paste0("01/01/2018 01:", timestamp)) %>%
-    rename(Accel.X = `acceleration-raw-x`,
-           Accel.Y = `acceleration-raw-y`,
-           Accel.Z = `acceleration-raw-z`,
-           ID = `tag-local-identifier`,
-           Time = DateTime,
-           Event.ID = `event-id`) %>%
-    select(Accel.X, Accel.Y, Accel.Z, Time, ID, Event.ID) %>%
-    mutate(Time = as.POSIXct(Time, format = "%d/%m/%Y %H:%M:%S"))
-  
-  data <- rbind(df1, df2)
 
 } else if (species == "Rautiainen_Reindeer"){
   data <- data %>%
@@ -92,11 +69,12 @@ if (species == "Wanja_Fox"){
     rename(Accel.X = X,
            Accel.Y = Y,
            Accel.Z = Z,
-           ID = TagID)
+           ID = TagID) %>%
+    select(ID, Time, Accel.X, Accel.Y, Accel.Z)
 
 } else if (species == "Minasandra_Hyena"){
   # these are h5 files so require being unpacked before read
-  files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = "\\.h5$")
+  files <- list.files(file.path(base_path, "AccelerometerData", species, "raw"), full.names = TRUE, pattern = "\\.h5$")
   
   dfs <- lapply(files, function(x){
     # List top-level groups/datasets and select the one you want
@@ -138,7 +116,7 @@ if (species == "Wanja_Fox"){
   
   if (species == "Sparkes_Koala"){
     # only select the first 100 files from each individual
-      all_files <- list.files(file.path(base_path, "AccelerometerData/Sparkes_Koala", "Data"),
+      all_files <- list.files(file.path(base_path, "AccelerometerData/Sparkes_Koala", "raw"),
                               recursive = TRUE, full.names = TRUE)
       subdirs <- dirname(all_files) %>% basename()
       files_by_subdir <- split(all_files, subdirs)
@@ -162,7 +140,7 @@ if (species == "Wanja_Fox"){
                                "Galea_Cat" = "_[0-9]{1}.csv$",
                                "Gaschk_Quoll" = "_Accel")
     
-    files <- list.files(file.path(base_path, "AccelerometerData", species), full.names = TRUE, pattern = pattern_dictionary[[species]], ignore.case = TRUE)
+    files <- list.files(file.path(base_path, "AccelerometerData", species, "raw"), full.names = TRUE, pattern = pattern_dictionary[[species]], ignore.case = TRUE)
 
   dfs <- lapply(files, function(x){
     reformat_clemente_data(x)
@@ -173,12 +151,30 @@ if (species == "Wanja_Fox"){
   data <- rbindlist(dfs)
   rm(dfs)
   
-} else if (species %in% c("Mauny_Goat", "Smit_Cat", "Ladds_Seal", "Studd_Squirrel")){
+} else if (species %in% c("Smit_Cat", "Studd_Squirrel")){
   
   data <- data %>%
     rename(Accel.X = X,
            Accel.Y = Y,
            Accel.Z = Z)
+  
+} else if (species == "Mauny_Goat"){
+  
+  files <- list.files(file.path(base_path, "AccelerometerData", species, "raw"), full.names = TRUE)
+  
+  data <- lapply(files, function(x){
+    
+    fread(x) %>%
+      select(TIME, ACCx, ACCy, ACCz) %>%
+      rename(Time = TIME,
+             Accel.X = ACCx,
+             Accel.Y = ACCy,
+             Accel.Z = ACCz) %>%
+      mutate(ID = str_split(tools::file_path_sans_ext(basename(x)), "_")[[1]][3])
+    
+  })
+  
+  data <- rbindlist(data)
   
 } else if (species == "Friedlaender_Whale"){
   
@@ -201,7 +197,7 @@ if (species == "Wanja_Fox"){
   
 } else if (species == "Chakravarty_Meerkat"){
   
-  file_path <- file.path(base_path, "AccelerometerData", "Chakravarty_Meerkat", "labelledTriaxialAccData.mat")
+  file_path <- file.path(base_path, "AccelerometerData", "Chakravarty_Meerkat", "raw", "labelledTriaxialAccData.mat")
   datasets <- h5ls(file_path)
   datasets <- datasets[datasets$otype == "H5I_DATASET", ]
   refs <- datasets$name
@@ -246,7 +242,7 @@ if (species == "Wanja_Fox"){
   
 } else if (species == "Kamminga_Horse"){
   
-  files <- list.files(file.path(base_path, "AccelerometerData", "Kamminga_Horse", "csv"), full.names = TRUE)
+  files <- list.files(file.path(base_path, "AccelerometerData", "Kamminga_Horse", "raw"), full.names = TRUE)
   data <- lapply(files, function(x){
     fread(x) %>% 
       rename(Accel.X = Ax,
@@ -257,6 +253,23 @@ if (species == "Wanja_Fox"){
   })
   data <- rbindlist(data)
 
+} else if (species == "Ladds_Seal"){
+
+  files <- list.files(file.path(base_path, "AccelerometerData", "Ladds_Seal", "raw"), full.names = TRUE, recursive = TRUE)
+  dfs <- lapply(files, function(x){
+      dat <- fread(x) %>%
+      select(time, x, y, z) %>%
+      rename(Time = time,
+             Accel.X = x,
+             Accel.Y = y,
+             Accel.Z = z) %>%
+      mutate(ID = basename(dirname(x)))
+    
+      if (!inherits(dat$Time, "POSIXct")) return(NULL)
+      dat
+  })
+  data <- rbindlist(dfs)
+  
 } else { # everythindataset_variables} else { # everything else
   data <- reformat_eobs_data(data)
 }

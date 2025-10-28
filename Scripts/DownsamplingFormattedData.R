@@ -7,7 +7,10 @@ data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species,
 sampling_style <- dataset_variables[Name == species]$SamplingStyle
 freq <- as.numeric(dataset_variables[Name == species]$Frequency)
 
-if (standard_sampling_rate > freq){
+if (freq == standard_sampling_rate){
+  print("already in this sampling rate")
+  fwrite(data, file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv")))
+} else if (standard_sampling_rate > freq){
   print("the sampling rate is smaller than the standard sampling rate... skipping")
 } else {
   downsampling_factor <- round(freq / standard_sampling_rate,0)
@@ -20,7 +23,6 @@ if (standard_sampling_rate > freq){
   }
   
   fwrite(resampled, file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv")))
-
 }
 
 

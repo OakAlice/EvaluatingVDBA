@@ -62,6 +62,9 @@ generate_vdba <- function(accel, freq){
 
 species <- c("Kamminga_Horse", "Chakravarty_Meerkat", "Clemente_Echidna")
 
+
+species <- "Annett_Possum"
+
 summaries <- lapply(species, function(x){
   print(x)
   
@@ -125,3 +128,34 @@ ggplot(vedba_stats, aes(x = as.factor(freq), y = meanVDBA, colour = as.factor(da
 
 
 
+
+
+x <- "Annett_Kangaroo"
+ # generate the datasets and generate the stats
+  data50 <- fread(file.path(base_path, "AccelerometerData", x, paste0(x, "_reformatted.csv")))
+  
+  freqs <- c(50, 25, 10)
+  freqs_dict <- list( # define how to downsample them
+    
+    `50`  = 1,
+    `25`  = 2,
+    `10`  = 4,
+    `5`   = 10,
+    `1`   = 20
+  )
+  
+  vedba_stats <- lapply(freqs, function(ii) {
+    # subsample the data
+    dat <- data50[seq(1, .N, by = freqs_dict[[as.character(ii)]])]
+    summary <- generate_vdba(dat, ii)$summary
+    summary$freq <- ii
+    summary
+  })
+  # Combine
+  vedba_stats <- rbindlist(vedba_stats, fill = TRUE)
+  vedba_stats$dataset <- x
+
+  ggplot(vedba_stats, aes(x = as.factor(freq), y = maxVDBA, colour = as.factor(dataset))) +
+    geom_boxplot() +
+    theme_minimal() +
+    theme(legend.position = "none")
