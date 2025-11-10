@@ -1,8 +1,5 @@
 # Main script for processing the other scripts ----------------------------
 
-# base_path <- "C:/Users/oaw001/OneDrive - University of the Sunshine Coast/EvaluatingVDBA"
-base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
-
 # Packages and settings ---------------------------------------------------
 # if (!requireNamespace("BiocManager", quietly = TRUE))
 #   install.packages("BiocManager")
@@ -18,9 +15,13 @@ p_load(tidyverse,
        zoo,
        R.matlab,
        rhdf5,
-       glmmTMB
+       glmmTMB,
+       signal,
+       lmerTest
        )
 
+# base_path <- "C:/Users/oaw001/OneDrive - University of the Sunshine Coast/EvaluatingVDBA"
+base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 
 # clear the system
 # all_csvs <- list.files(file.path(base_path, "AccelerometerData"), 
@@ -39,25 +40,47 @@ source(file = file.path(base_path, "Scripts", "GeneralFunctions.R")) # general f
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
 
 
-
-
+## EXPERIMENTATION #####
 # Experimenting with Sampling Rate ----------------------------------------
 source(file = file.path(base_path, "Scripts", "SamplingRateExperiment.R"))
 
-# Within Species and Dataset Analysis -------------------------------------
-source(file = file.path(base_path, "Scripts", "IndividualAnalysis.R"))
 
-# Preprocessing -----------------------------------------------------------
-# getting all the data into the same format
-source(file = file.path(base_path, "Scripts", "PreProcessing.R"))
+
+## PREPARE ALL DATASETS #####
+# Get all datasets into a consistent format -------------------------------
+for (dataset in species_list){
+  species <- basename(dataset)
+  print(species)
+  if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))){
+    print("already refomatted")
+  } else {
+    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "FormattingRawData.csv"))
+  }
+}
+
+# Filtering ---------------------------------------------------------------
+if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothing.csv")))){
+  print("already formatted")
+} else {
+  source(file = file.path(base_path, "Scripts", "SmoothingRawData.R"))
+}
+
+# Downsampling to the same sampling rate ----------------------------------
+# standard_sampling_rate <- 10
+# if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv")))){
+#   print("already resampled")
+# } else {
+#   source(file = file.path(base_path, "Scripts", "DownsamplingFormattedData.R"))
+# }
+
+
+# Determining which ones were measured in Gs ------------------------------
+source(file = file.path(base_path, "Scripts", "DeterminingCalibration.R"))
 
 # Generating VBDA ---------------------------------------------------------
 for (dataset in species_list){
   species <- basename(dataset)
   print(species)
-  if (species %in% c("Clemente_Impala", "Annett_Kangaroo", "Friedlaender_Whale", "Kamminga_Horse", "Studd_Squirrel")){
-    next
-  }
   # Calculating and thresholding between active and inactive for each species
   if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
     print("already summarised")
@@ -66,7 +89,34 @@ for (dataset in species_list){
   }
 }
 
+## PART 1: INDIVIDUAL SPECIES #####
+# Within Species and Dataset Analysis -------------------------------------
+source(file = file.path(base_path, "Scripts", "1.IndividualAnalysis.R"))
+
+## PART 2: MULTI-SPECIES (ALL ONE SYSTEM) #####
+# Within Axivity & Sampling Rate-------------------------------------------
+source(file = file.path(base_path, "Scripts", "2.AxivityAnalysis.R"))
+
+
+## PART 3: MULTI-SPECIES (CROSS-SYSTEMS) #####
+# Preprocessing -----------------------------------------------------------
+# getting all the data into the same format
+# putting them all on the same Gs acceleration scale
+source(file = file.path(base_path, "Scripts", "PreProcessing.R"))
+
+
+
 # Scaling -----------------------------------------------------------------
 # understanding these results
 source(file = file.path(base_path, "Scripts", "ScalingVDBA.R"))
+
+
+## PART 4: FROM THE LITERATURE #####
+
+
+
+## PART 5: All-TOGETHER #####
+
+
+
 

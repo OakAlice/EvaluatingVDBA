@@ -2,6 +2,7 @@
 
 summary_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "*_summary\\.csv$", full.names = TRUE)
 
+
 vdba_data <- lapply(summary_files, function(x){
   
   dat <- fread(x) %>% na.omit()
@@ -18,7 +19,7 @@ vdba_data <- vdba_data %>%
   select(ID, threshold, meanVDBA, minVDBA, maxVDBA, dataset)
 
 dataset_variables$dataset <- dataset_variables$Name
-vdba_stuff <- merge(vdba_data, dataset_variables, by = 'dataset')
+vdba_stuff1 <- merge(vdba_data, dataset_variables, by = 'dataset')
 
 # find the species calibration settings
 Gs <- fread(file.path(base_path, "Output", "G_scaling.csv"))
@@ -26,13 +27,13 @@ Gs_species <- unique(unlist(Gs$species[Gs$rescale == "G"]))
 Gs_species <- na.omit(Gs_species)
 
 
-# remove the non-mammal data
-vdba_stuff <- vdba_stuff %>% 
+# remove the non-mammal data 
+vdba_stuff <- vdba_stuff1 %>% 
   # filter(Type == "Mam") %>%
   # filter(Zone == "Land") %>%
-  # filter(dataset %in% Gs_species) %>%
-  filter(DeviceAttachment == "Collar") %>%
-  filter(!dataset == "Chakravarty_Meerkat")
+  dplyr::filter(dataset %in% Gs_species) %>%
+  dplyr::filter(DeviceAttachment %in% c("Harness", "Collar")) %>%
+  dplyr::filter(!dataset %in% c("Chakravarty_Meerkat", "Schloesing_FruitBat", "Nuijten_BewickSwans"))
 
 # summarise by dataset
 # vdba_stuff <- vdba_stuff %>% group_by(dataset, threshold, LogMass, Name) %>%
@@ -42,7 +43,7 @@ vdba_stuff <- vdba_stuff %>%
 #             )
 
 ggplot(vdba_stuff, aes(x = dataset, y = log10(maxVDBA), colour = threshold)) +
-  geom_point() +
+  geom_point(position = "jitter") +
   #scale_y_continuous(limits = c(0, 2)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
