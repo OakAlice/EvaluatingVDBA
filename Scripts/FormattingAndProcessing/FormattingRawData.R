@@ -114,11 +114,14 @@ if (species == "Wanja_Fox"){
   data <- rbindlist(dfs)
   rm(dfs)
 
-} else if (species %in% c("Annett_Possum", "DiCicco_Perentie", "Galea_Cat")){
+} else if (species %in% c("Annett_Possum", "DiCicco_Perentie", "Galea_Cat", 
+                          "Annett_Bettong")){
   
   pattern_dictionary <- list("Annett_Possum" = "^[0-9]{5}_.+\\.csv$",
                             "DiCicco_Perentie" = "^[0-9]{5}.+\\.csv$",
-                            "Galea_Cat" = "_[0-9]{1}.csv$")
+                            "Galea_Cat" = "_[0-9]{1}.csv$",
+                            "Annett_Wallaby" = ".csv",
+                            "Annett_Bettong" = ".csv")
     
   files <- list.files(file.path(base_path, "AccelerometerData", species, "raw"), full.names = TRUE, pattern = pattern_dictionary[[species]], ignore.case = TRUE)
 
@@ -127,7 +130,26 @@ if (species == "Wanja_Fox"){
   })
   data <- rbindlist(dfs)
   rm(dfs)
+
+} else if (species == "Annett_Glider"){
   
+  files <- list.files(file.path(base_path, "AccelerometerData", species, "raw"), full.names = TRUE, pattern = ".txt", ignore.case = TRUE)
+
+  dfs <- lapply(files, function(x){
+    reformat_clemente_data(x)
+  })
+  data <- rbindlist(dfs)
+  data$ID <- str_extract(data$ID, "Flip|Gilberta")
+  
+} else if (species == "Clemente_Kudu"){
+  
+    dat <- fread(file.path(base_path, "AccelerometerData", species, "raw", "6017913_0000000000.csv"))
+    dat <- dat[, 1:4]
+    colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
+    dat$Time <- as.POSIXct(dat$Time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
+    dat$ID <- tools::file_path_sans_ext(basename(x))
+    data <- dat
+    
 } else if (species %in% c("Smit_Cat", "Studd_Squirrel", "Clemente_Echidna")){
   data <- fread(file.path(base_path, "AccelerometerData", species, "raw", 
                           if (species == "Smit_Cat"){ "Smit_Cat_reformatted.csv"

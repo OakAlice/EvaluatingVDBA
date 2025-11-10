@@ -1,0 +1,139 @@
+---
+title: "Results for VDBA Scaling Analysis"
+author: "O.W."
+date: "2025-11-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(data.table, tidyverse, lmerTest)
+
+base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
+
+dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
+```
+
+## PART 1: Individual Analysis
+Where the masses of the exact individual are known. Per species plot and then all known individuals on the same graph.
+```{r 1, echo = FALSE}
+species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "Sparkes_Koala", "Clemente_Kudu")
+
+# Analysis ----------------------------------------------------------------
+all_summaries <- lapply(species, function(x){
+  weights <- fread(file.path(base_path, "AccelerometerData", x, "Mass_of_Individuals.csv")) %>%
+    mutate(ID = as.character(ID))
+  summary <- fread(file.path(base_path, "AccelerometerData", x, paste0(x, "_summary.csv"))) %>%
+    mutate(Dataset = x,
+           ID = as.character(ID))
+  dat <- merge(summary, weights, by = "ID")
+  dat
+})
+
+all_data <- rbindlist(all_summaries, fill = TRUE) %>%
+  select(Dataset, ID, threshold, meanVDBA, minVDBA, maxVDBA, LogMass)
+
+# Plots -------------------------------------------------------------------
+p1 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA), colour = threshold)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~Dataset, scales = "free") +
+  theme_minimal()
+
+p1
+
+# plot all the individuals togetehr
+p2 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA), colour = threshold)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_minimal()
+
+p2
+
+# Stats -------------------------------------------------------------------
+model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Dataset), data = all_data)
+summary(model)
+
+```
+
+
+## PART 2: Axivity analysis
+Where exact masses are not included (species averages) but all data is collected using the same accelerometer (Axivity AX3 and AX6) sampling protocol.
+
+```{r 2, echo = FALSE}
+axivity_species <- dataset_variables$Name[dataset_variables$Device == "Axivity"]
+
+# Analysis ----------------------------------------------------------------
+axivity_summaries <- lapply(axivity_species, function(x){
+ fread(file.path(base_path, "AccelerometerData", x, paste0(x, "_summary.csv"))) %>%
+    mutate(Dataset = x,
+           ID = as.character(ID),
+           LogMass = dataset_variables$LogMass[dataset_variables$Name == x]
+           )
+})
+axivity_summaries <- rbindlist(axivity_summaries, fill = TRUE) %>%
+  select(Dataset, ID, threshold, meanVDBA, minVDBA, maxVDBA, LogMass)
+
+# Plots -------------------------------------------------------------------
+p3 <- ggplot(axivity_summaries, aes(x = LogMass, y = log10(meanVDBA), colour = Dataset)) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(group = threshold, colour = threshold)) +
+  theme_minimal()
+
+p3
+
+# Stats -------------------------------------------------------------------
+axivity_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Dataset), data = axivity_summaries)
+summary(axivity_model)
+
+```
+
+## PART 3: All Species
+All species, with approximate/average masses. 
+```{r, echo = FALSE}
+all_summary_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "*_summary\\.csv$", full.names = TRUE)
+
+vdba_data <- lapply(all_summary_files, function(x){
+  dat <- fread(x) %>% na.omit()
+  dat$ID <- as.character(dat$ID)
+  dat$Name <- basename(dirname(x))
+  dat
+})
+vdba_data <- rbindlist(vdba_data, fill = TRUE)
+
+vdba_data <- vdba_data %>%
+  select(ID, threshold, meanVDBA, minVDBA, maxVDBA, Name) %>%
+  dplyr::filter(!Name == "Chakravarty_Meerkat")
+
+vdba_stuff1 <- merge(vdba_data, dataset_variables, by = 'Name')
+
+# summarise by dataset
+vdba_stuff1_summarised <- vdba_stuff1 %>% group_by(Name, threshold, LogMass) %>%
+   summarise(meanVDBA = mean(meanVDBA),
+             maxVDBA = mean(maxVDBA),
+             minVDBA = mean(minVDBA)
+             )
+
+# Plots ------------------------------------------------------------------------
+p4 <- ggplot(vdba_stuff1, aes(x = LogMass, y = log10(meanVDBA), shape = threshold, colour = Name)) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(group = threshold, colour = threshold)) +
+  theme_minimal() 
+p4 
+
+p5 <- ggplot(vdba_stuff1_summarised, aes(x = LogMass, y = log10(meanVDBA), shape = threshold, colour = Name)) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(group = threshold, colour = threshold)) +
+  theme_minimal()
+p5
+
+# stats ------------------------------------------------------------------------
+all_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Name) + (1|DeviceAttachment), data = vdba_stuff1)
+summary(all_model)
+
+```
+
+
+
+
+

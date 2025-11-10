@@ -15,7 +15,6 @@ p_load(tidyverse,
        zoo,
        R.matlab,
        rhdf5,
-       glmmTMB,
        signal,
        lmerTest
        )
@@ -34,7 +33,6 @@ base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 
 
 # Variables ---------------------------------------------------------------
-source(file = file.path(base_path, "Scripts", "VariableDictionaries.R"))
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 source(file = file.path(base_path, "Scripts", "GeneralFunctions.R")) # general functions
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
@@ -85,7 +83,7 @@ for (dataset in species_list){
   if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
     print("already summarised")
   } else {
-     source(file = file.path(base_path, "Scripts", "GeneratingVDBA.R"))
+     source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
   }
 }
 
