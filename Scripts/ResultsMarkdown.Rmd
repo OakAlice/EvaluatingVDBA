@@ -7,11 +7,44 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-pacman::p_load(data.table, tidyverse, lmerTest)
+pacman::p_load(data.table, tidyverse, lmerTest, ggnewscale)
 
 base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
+```
+
+```{r plot_thme, include=FALSE}
+my_theme <- function() {
+  theme_minimal(base_size = 10, base_family = "serif") +
+    theme(
+      panel.border = element_rect(color = "black", linewidth = 1.5, fill = NA),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.background = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(color = "black"),
+      axis.ticks = element_line(color = "black"),
+      axis.title = element_text(size = 12),
+      axis.text = element_text(size = 12) 
+    )
+}
+fave_colours <- c(
+  "firebrick3", "tomato", "coral", "lightsalmon", "sienna3", "tan2",
+  "goldenrod2", "lemonchiffon2", "khaki2",
+  "darkseagreen4", "seagreen", "aquamarine3", "darkcyan",
+  "skyblue4", "deepskyblue3", "cornflowerblue", "powderblue",
+  "royalblue4", "slateblue2", "lightslateblue",
+  "purple4", "mediumpurple3", "mediumorchid", "plum", "orchid3", "thistle",
+  "deeppink3", "lightpink1", "mistyrose3", "lavenderblush2", "seashell2"
+)
+
+threshold_cols <- c(
+  active   = "lightcoral", 
+  inactive = "lightcyan3",
+  all  = "ivory3"
+)
+
 ```
 
 ## PART 1: Individual Analysis
@@ -34,20 +67,25 @@ all_data <- rbindlist(all_summaries, fill = TRUE) %>%
   select(Dataset, ID, threshold, meanVDBA, minVDBA, maxVDBA, LogMass)
 
 # Plots -------------------------------------------------------------------
-p1 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA), colour = threshold)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
+p1 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA))) +
+  geom_point(aes(colour = Dataset)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  
   facet_wrap(~Dataset, scales = "free") +
-  theme_minimal()
-
+  my_theme()
 p1
 
 # plot all the individuals togetehr
-p2 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA), colour = threshold)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  theme_minimal()
-
+p2 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA))) +
+  geom_point(aes(colour = Dataset)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme()
 p2
 
 # Stats -------------------------------------------------------------------
@@ -75,11 +113,13 @@ axivity_summaries <- rbindlist(axivity_summaries, fill = TRUE) %>%
   select(Dataset, ID, threshold, meanVDBA, minVDBA, maxVDBA, LogMass)
 
 # Plots -------------------------------------------------------------------
-p3 <- ggplot(axivity_summaries, aes(x = LogMass, y = log10(meanVDBA), colour = Dataset)) +
-  geom_point() +
-  geom_smooth(method = "lm", aes(group = threshold, colour = threshold)) +
-  theme_minimal()
-
+p3 <- ggplot(axivity_summaries, aes(x = LogMass, y = log10(meanVDBA))) +
+  geom_point(aes(colour = Dataset)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme()
 p3
 
 # Stats -------------------------------------------------------------------
@@ -115,16 +155,22 @@ vdba_stuff1_summarised <- vdba_stuff1 %>% group_by(Name, threshold, LogMass) %>%
              )
 
 # Plots ------------------------------------------------------------------------
-p4 <- ggplot(vdba_stuff1, aes(x = LogMass, y = log10(meanVDBA), shape = threshold, colour = Name)) +
-  geom_point() +
-  geom_smooth(method = "lm", aes(group = threshold, colour = threshold)) +
-  theme_minimal() 
+p4 <- ggplot(vdba_stuff1, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
+  geom_point(aes(colour = Name)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme() 
 p4 
 
-p5 <- ggplot(vdba_stuff1_summarised, aes(x = LogMass, y = log10(meanVDBA), shape = threshold, colour = Name)) +
-  geom_point() +
-  geom_smooth(method = "lm", aes(group = threshold, colour = threshold)) +
-  theme_minimal()
+p5 <- ggplot(vdba_stuff1_summarised, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
+  geom_point(aes(colour = Name)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme()
 p5
 
 # stats ------------------------------------------------------------------------

@@ -31,18 +31,14 @@ base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 # to_delete <- setdiff(all_csvs, raw_csvs)
 # file.remove(to_delete)
 
-
-# Variables ---------------------------------------------------------------
+# Variables #####
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 source(file = file.path(base_path, "Scripts", "GeneralFunctions.R")) # general functions
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
 
-
 ## EXPERIMENTATION #####
 # Experimenting with Sampling Rate ----------------------------------------
 source(file = file.path(base_path, "Scripts", "SamplingRateExperiment.R"))
-
-
 
 ## PREPARE ALL DATASETS #####
 # Get all datasets into a consistent format -------------------------------
@@ -54,23 +50,24 @@ for (dataset in species_list){
   } else {
     source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "FormattingRawData.csv"))
   }
+  
+  # Filtering ---------------------------------------------------------------
+  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothing.csv")))){
+    print("already smoothed")
+  } else {
+    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "SmoothingRawData.R"))
+  }
 }
 
-# Filtering ---------------------------------------------------------------
-if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothing.csv")))){
-  print("already formatted")
-} else {
-  source(file = file.path(base_path, "Scripts", "SmoothingRawData.R"))
-}
 
-# Downsampling to the same sampling rate ----------------------------------
+
+# Filtering outliers and downsampling to standard rate --------------------
 # standard_sampling_rate <- 10
 # if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv")))){
 #   print("already resampled")
 # } else {
 #   source(file = file.path(base_path, "Scripts", "DownsamplingFormattedData.R"))
 # }
-
 
 # Determining which ones were measured in Gs ------------------------------
 source(file = file.path(base_path, "Scripts", "DeterminingCalibration.R"))
@@ -87,34 +84,8 @@ for (dataset in species_list){
   }
 }
 
-## PART 1: INDIVIDUAL SPECIES #####
-# Within Species and Dataset Analysis -------------------------------------
-source(file = file.path(base_path, "Scripts", "1.IndividualAnalysis.R"))
-
-## PART 2: MULTI-SPECIES (ALL ONE SYSTEM) #####
-# Within Axivity & Sampling Rate-------------------------------------------
-source(file = file.path(base_path, "Scripts", "2.AxivityAnalysis.R"))
-
-
-## PART 3: MULTI-SPECIES (CROSS-SYSTEMS) #####
-# Preprocessing -----------------------------------------------------------
-# getting all the data into the same format
-# putting them all on the same Gs acceleration scale
-source(file = file.path(base_path, "Scripts", "PreProcessing.R"))
-
-
-
+## ANALYSIS #####
 # Scaling -----------------------------------------------------------------
 # understanding these results
-source(file = file.path(base_path, "Scripts", "ScalingVDBA.R"))
-
-
-## PART 4: FROM THE LITERATURE #####
-
-
-
-## PART 5: All-TOGETHER #####
-
-
-
+source(file = file.path(base_path, "Scripts", "ResultsMarkdown.Rmd"))
 

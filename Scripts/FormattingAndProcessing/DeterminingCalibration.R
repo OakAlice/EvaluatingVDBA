@@ -64,7 +64,7 @@ Gs <- lapply(species_list, function(x){
     NULL
   } else {
   
-  resampled_data <- file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv"))
+  resampled_data <- file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv"))
   if (file.exists(resampled_data)){
     accel <- fread(resampled_data)
   } else {

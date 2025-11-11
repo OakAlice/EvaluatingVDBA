@@ -6,7 +6,7 @@
 # Gs_species <- na.omit(unique(unlist(Gs$species[Gs$rescale == "G"])))
 # 
 # if (species %in% Gs_species){
-   accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
+   accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv")))
 # } else {
 #  accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_recalibrated.csv")))
 # }
