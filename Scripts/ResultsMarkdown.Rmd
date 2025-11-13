@@ -7,11 +7,13 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-pacman::p_load(data.table, tidyverse, lmerTest, ggnewscale)
+pacman::p_load(data.table, tidyverse, lmerTest, ggnewscale, patchwork)
 
 base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
+species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
+
 ```
 
 ```{r plot_thme, include=FALSE}
@@ -30,13 +32,13 @@ my_theme <- function() {
     )
 }
 fave_colours <- c(
-  "firebrick3", "tomato", "coral", "lightsalmon", "sienna3", "tan2",
+  "firebrick3", "tomato", "coral", "darkorange2", "sienna3", "tan2",
   "goldenrod2", "lemonchiffon2", "khaki2",
-  "darkseagreen4", "seagreen", "aquamarine3", "darkcyan",
-  "skyblue4", "deepskyblue3", "cornflowerblue", "powderblue",
-  "royalblue4", "slateblue2", "lightslateblue",
+  "springgreen3", "darkseagreen4", "seagreen", "olivedrab4", "darkcyan", "aquamarine3",
+  "skyblue4", "deepskyblue3", "cornflowerblue", "powderblue", "royalblue4", "slateblue2", "lightslateblue",
   "purple4", "mediumpurple3", "mediumorchid", "plum", "orchid3", "thistle",
-  "deeppink3", "lightpink1", "mistyrose3", "lavenderblush2", "seashell2"
+  "deeppink3", "hotpink", "lightpink1", "rosybrown1",
+  "mistyrose3", "lavenderblush2", "seashell2"
 )
 
 threshold_cols <- c(
@@ -49,8 +51,8 @@ threshold_cols <- c(
 
 ## PART 1: Individual Analysis
 Where the masses of the exact individual are known. Per species plot and then all known individuals on the same graph.
-```{r 1, echo = FALSE}
-species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "Sparkes_Koala", "Clemente_Kudu")
+```{r echo = FALSE}
+species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "Sparkes_Koala", "Clemente_Kudu", "HarveyCaroll_Pangolin", "Vehkaoja_Dog")
 
 # Analysis ----------------------------------------------------------------
 all_summaries <- lapply(species, function(x){
@@ -68,7 +70,7 @@ all_data <- rbindlist(all_summaries, fill = TRUE) %>%
 
 # Plots -------------------------------------------------------------------
 p1 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA))) +
-  geom_point(aes(colour = Dataset)) +
+  geom_point(aes(colour = Dataset, shape = threshold)) +
   scale_color_manual(values = fave_colours) +
   ggnewscale::new_scale_colour() + # reset the colour scale
   geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
@@ -80,7 +82,7 @@ p1
 
 # plot all the individuals togetehr
 p2 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA))) +
-  geom_point(aes(colour = Dataset)) +
+  geom_point(aes(colour = Dataset, shape = threshold)) +
   scale_color_manual(values = fave_colours) +
   ggnewscale::new_scale_colour() + # reset the colour scale
   geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
@@ -88,18 +90,30 @@ p2 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA))) +
   my_theme()
 p2
 
+p2.2 <- ggplot(all_data %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(maxVDBA))) +
+  geom_point(aes(colour = Dataset, shape = threshold)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme()
+p2.2
+
 # Stats -------------------------------------------------------------------
-model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Dataset), data = all_data)
-summary(model)
+mean_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Dataset), data = all_data)
+summary(mean_model)
+
+active_data <- all_data %>% filter(threshold == "active")
+max_model <- lmer(log10(maxVDBA) ~ LogMass + (1 | Dataset), data = active_data)
+summary(max_model)
 
 ```
 
-
-## PART 2: Axivity analysis
-Where exact masses are not included (species averages) but all data is collected using the same accelerometer (Axivity AX3 and AX6) sampling protocol.
-
-```{r 2, echo = FALSE}
-axivity_species <- dataset_variables$Name[dataset_variables$Device == "Axivity"]
+## PART 2: Single System analysis
+Where exact masses are not included (species averages) but all data is collected using the same accelerometer sampling protocol.
+# V1: Axivity
+```{r echo = FALSE}
+axivity_species <- dataset_variables$Name[dataset_variables$Device == "Axivity" & dataset_variables$Type == "Mam"]
 
 # Analysis ----------------------------------------------------------------
 axivity_summaries <- lapply(axivity_species, function(x){
@@ -122,9 +136,61 @@ p3 <- ggplot(axivity_summaries, aes(x = LogMass, y = log10(meanVDBA))) +
   my_theme()
 p3
 
+p3.2 <- ggplot(axivity_summaries %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(maxVDBA))) +
+  geom_point(aes(colour = Dataset)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme()
+p3.2
+
 # Stats -------------------------------------------------------------------
 axivity_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Dataset), data = axivity_summaries)
 summary(axivity_model)
+
+```
+# V2: Buchmann
+```{r echo = FALSE}
+buchmann_species <- dataset_variables$Name[str_detect(dataset_variables$Name, "Buchmann") %in% TRUE]
+
+# Analysis ----------------------------------------------------------------
+buchmann_summaries <- lapply(buchmann_species, function(x){
+ fread(file.path(base_path, "AccelerometerData", x, paste0(x, "_summary.csv"))) %>%
+    mutate(Dataset = x,
+           ID = as.character(ID),
+           LogMass = dataset_variables$LogMass[dataset_variables$Name == x]
+           )
+})
+buchmann_summaries <- rbindlist(buchmann_summaries, fill = TRUE) %>%
+  select(Dataset, ID, threshold, meanVDBA, minVDBA, maxVDBA, LogMass)
+
+# Plots -------------------------------------------------------------------
+p3.3 <- ggplot(buchmann_summaries, aes(x = LogMass, y = log10(meanVDBA))) +
+  geom_point(aes(colour = Dataset)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme()
+p3.3
+
+p3.4 <- ggplot(buchmann_summaries %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(meanVDBA))) +
+  geom_point(aes(colour = Dataset)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme()
+p3.4
+
+# Stats -------------------------------------------------------------------
+buchmann_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Dataset), data = buchmann_summaries)
+summary(buchmann_model)
+
+# buchmann_active_data <- buchmann_summaries %>% dplyr::filter(threshold == "active")
+# buchmann_max_model <- lmer(log10(maxVDBA) ~ LogMass + (1 | Dataset), data = buchmann_active_data)
+# summary(buchmann_max_model)
 
 ```
 
@@ -164,7 +230,7 @@ p4 <- ggplot(vdba_stuff1, aes(x = LogMass, y = log10(meanVDBA), shape = threshol
   my_theme() 
 p4 
 
-p5 <- ggplot(vdba_stuff1_summarised, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
+p5 <- ggplot(vdba_stuff1, aes(x = LogMass, y = log10(maxVDBA), shape = threshold)) +
   geom_point(aes(colour = Name)) +
   scale_color_manual(values = fave_colours) +
   ggnewscale::new_scale_colour() + # reset the colour scale

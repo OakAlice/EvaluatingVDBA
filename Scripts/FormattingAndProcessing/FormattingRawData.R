@@ -150,11 +150,13 @@ if (species == "Wanja_Fox"){
     dat$ID <- tools::file_path_sans_ext(basename(x))
     data <- dat
     
-} else if (species %in% c("Smit_Cat", "Studd_Squirrel", "Clemente_Echidna")){
+} else if (species %in% c("Smit_Cat", "Studd_Squirrel", "Clemente_Echidna", "HarveyCaroll_Pangolin", "Vehkaoja_Dog")){
   data <- fread(file.path(base_path, "AccelerometerData", species, "raw", 
                           if (species == "Smit_Cat"){ "Smit_Cat_reformatted.csv"
                           } else if(species == "Studd_Squirrel"){ "Studd_Squirrel_reformatted.csv"
-                          } else if (species == "Clemente_Echidna"){ "Clemente_Echidna_reformatted.csv"}
+                          } else if (species == "Clemente_Echidna"){ "Clemente_Echidna_reformatted.csv"
+                          } else if (species == "HarveyCaroll_Pangolin"){"HarveyCaroll_Pangolin_reformatted.csv"
+                          } else if (species == "Vehkaoja_Dog"){"Formatted_raw_data.csv"}
   ))
   data <- data %>%
     rename(Accel.X = X,
@@ -307,6 +309,150 @@ if (species == "Wanja_Fox"){
     })
   
   data <- rbindlist(data)
+  
+} else if (species == "Pagano_Bear"){
+  
+  data <- fread(file.path(base_path, "AccelerometerData", "Pagano_Bear", "raw", "PolarBear_archival_logger_data_southernBeaufortSea_2014_2016_revised.csv"))
+  data <- data %>%
+    rename(ID = Bear,
+           Time = Datetime,
+           Accel.X = Int_aX,
+           Accel.Y = Int_aY,
+           Accel.Z = Int_aZ)
+
+} else if (species == "Mezzini_WhiteDeer"){
+  data <- readRDS(file.path(base_path, "AccelerometerData", "Mezzini_WhiteDeer", "raw", "years-1-and-2-data-no-akde.rds"))
+  
+  # Assume `tele <- buffalo`
+  dt_list <- lapply(data$tel, as.data.frame)
+  dt <- rbindlist(dt_list, idcol = "ID")
+  
+  data <- dt %>% 
+    select(ID, timestamp, x, y) %>% 
+    rename(Time = timestamp,
+           Accel.X = x,
+           Accel.Y = y)
+  
+} else if (species == "Studd_Lynx"){
+  files <- list.files(file.path(base_path, "AccelerometerData", "Studd_Lynx", "raw"), full.names = TRUE)
+  data <- lapply(files, function(x){
+    dat <- fread(x)
+    dat <- dat %>%
+      rename(Time = V1, 
+             Accel.X = V2,
+             Accel.Y = V3,
+             Accel.Z = V4) %>%
+      mutate(ID = str_split(tools::file_path_sans_ext(basename(x)), "_")[[1]][1])
+    dat
+  })
+  data <- rbindlist(data)
+  
+} else if (species == "Williams_Squirrel"){
+  
+  files <- list.files(file.path(base_path, "AccelerometerData", "Williams_Squirrel", "raw"), full.names = TRUE)
+  data <- lapply(files, \(x) {
+    dat <- fread(x, col.names = c(
+      "year", "month", "day", "hour", "min", "sec", "doy", "uniqueID",
+      "Sex", "Site", "acc_x", "acc_y", "acc_z", "odba"
+    ))[1:(.N/2)]  # take first half of rows (just because the files are really big)
+    
+    dat %>%
+      mutate(
+        Time = as.POSIXct(sprintf("%04d/%02d/%02d %02d:%02d:%02d",
+                                  year, month, day, hour, min, sec),
+                          format = "%Y/%m/%d %H:%M:%S")
+      ) %>%
+      transmute(
+        ID = uniqueID,
+        Time,
+        Accel.X = acc_x,
+        Accel.Y = acc_y,
+        Accel.Z = acc_z
+      )
+  })
+  
+  data <- rbindlist(data)
+
+} else if (species == "Harris_Sheep"){
+  files <- list.files(file.path(base_path, "AccelerometerData", "Harris_Sheep", "raw"), full.names = TRUE)[1:19]
+  data <- lapply(files, function(x){
+    df <- fread(x)
+    
+    x_cols <- grep("^x_", names(df), value = TRUE)
+    y_cols <- grep("^y_", names(df), value = TRUE)
+    z_cols <- grep("^z_", names(df), value = TRUE)
+    n_samples <- length(x_cols)
+    
+    # Melt to long format
+    df_long <- melt(
+      df,
+      id.vars = c("sheep_number", "time_stamp"),
+      measure = list(Accel.X = x_cols, Accel.Y = y_cols, Accel.Z = z_cols),
+      variable.name = "sample_index"
+    )
+    
+    # Add per-sample timestamp (30 Hz = every 1/30 sec)
+    df_long[, time_stamp := as.POSIXct(time_stamp, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")]
+    df_long[, Time := time_stamp + (as.numeric(sample_index) / 30)]
+    
+    # Reorder and clean up
+    setorder(df_long, sheep_number, Time)
+    df_long <- df_long[, .(sheep_number, Time,
+                           Accel.X, Accel.Y, Accel.Z)]
+    
+    df_long <- na.omit(df_long)
+    df_long$ID <- str_split(tools::file_path_sans_ext(basename(x)), "_")[[1]][2]
+    
+    df_long
+  })
+  
+  data <- rbindlist(data)
+  
+} else if (species == "Neis_Cow"){
+  files <- list.files(file.path(base_path, "AccelerometerData", "Neis_Cow", "raw", "immu"), full.names = TRUE, recursive = TRUE)
+  data <- lapply(files, function(x){
+    df <- fread(x) %>%
+      rename(Time = timestamp,
+             Accel.X = accel_x_mps2,
+             Accel.Y = accel_y_mps2,
+             Accel.Z = accel_z_mps2) %>%
+      select(Time, Accel.X, Accel.Y, Accel.Z) %>%
+      mutate(ID = basename(dirname(x)))
+    
+    # convery from mps2 to Gs
+    df[, `:=`(
+      Accel.X = Accel.X / 9.80665,
+      Accel.Y = Accel.Y / 9.80665,
+      Accel.Z = Accel.Z / 9.80665
+    )]
+    
+    df
+  })
+  data <- rbindlist(data)
+  
+} else if (str_detect(species, "Buchmann") %in% TRUE){
+  
+  files <- list.files(file.path(base_path, "AccelerometerData", species, "raw"), full.names = TRUE)
+  data <- lapply(files, function(x){
+    df <- fread(x, header = FALSE) %>%
+      rename(Time = V4,
+             Accel.X = V1,
+             Accel.Y = V2,
+             Accel.Z = V3)
+    
+    df$ID <- str_split(tools::file_path_sans_ext(basename(x)), "_")[[1]][2]
+    
+    # convert into Gs
+    df[, `:=`(
+      Accel.X = Accel.X / 9.80665,
+      Accel.Y = Accel.Y / 9.80665,
+      Accel.Z = Accel.Z / 9.80665
+    )]
+  
+    df
+  })
+  data <- rbindlist(data)
+  
   
 } else { # everythindataset_variables} else { # everything else
   data <- reformat_eobs_data(data)

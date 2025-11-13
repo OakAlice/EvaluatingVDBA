@@ -15,6 +15,7 @@ p_load(tidyverse,
        zoo,
        R.matlab,
        rhdf5,
+       ctmm,
        signal,
        lmerTest
        )
@@ -44,15 +45,19 @@ source(file = file.path(base_path, "Scripts", "SamplingRateExperiment.R"))
 # Get all datasets into a consistent format -------------------------------
 for (dataset in species_list){
   species <- basename(dataset)
+  
+  if (species == "Clemente_Impala"){
+    next
+  }
   print(species)
   if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))){
     print("already refomatted")
   } else {
     source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "FormattingRawData.csv"))
   }
-  
+
   # Filtering ---------------------------------------------------------------
-  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothing.csv")))){
+  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv")))){
     print("already smoothed")
   } else {
     source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "SmoothingRawData.R"))
@@ -70,11 +75,15 @@ for (dataset in species_list){
 # }
 
 # Determining which ones were measured in Gs ------------------------------
-source(file = file.path(base_path, "Scripts", "DeterminingCalibration.R"))
+# source(file = file.path(base_path, "Scripts", "DeterminingCalibration.R"))
+# commented this out as I removed all the ones not in Gs
 
 # Generating VBDA ---------------------------------------------------------
 for (dataset in species_list){
   species <- basename(dataset)
+  if (species == "Clemente_Impala"){
+    next
+  }
   print(species)
   # Calculating and thresholding between active and inactive for each species
   if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){

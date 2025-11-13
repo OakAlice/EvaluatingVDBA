@@ -3,6 +3,7 @@
 
 data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
 
+data <- na.omit(data)
 # Define sampling frequency and cutoff frequency
 freq <- as.numeric(dataset_variables[Name == species]$Frequency) # Hz
 
