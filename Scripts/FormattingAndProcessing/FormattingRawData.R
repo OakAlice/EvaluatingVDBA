@@ -83,7 +83,7 @@ if (species == "Wanja_Fox"){
     
     # stitch it all together
     data[, `:=`(Time = Time, ID = ID)]
-    data <- data[1:(nrow(data)/4), ]
+    data <- data[1:(nrow(data)/5), ]
     
     H5close() # close the file
     data

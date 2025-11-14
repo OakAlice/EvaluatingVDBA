@@ -59,11 +59,11 @@ for (dataset in species_list){
   }
 
   # Filtering ---------------------------------------------------------------
-  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv")))){
-    print("already smoothed")
-  } else {
-    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "SmoothingRawData.R"))
-  }
+  # if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv")))){
+  #  print("already smoothed")
+  # } else {
+    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "CleanFormattedData.R"))
+  # }
 }
 
 # Generating summary of the data ------------------------------------------
