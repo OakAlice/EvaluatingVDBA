@@ -12,6 +12,7 @@ Bio-logging accelerometers are frequently used to estimate energetic output (met
 - Summarised max and mean VDBA per individual.
 
 ## Understanding the Repo
+```
 EvaluatingVDBA/
 ├── AccelerometerData/
 │ └── Species1/
@@ -30,6 +31,7 @@ EvaluatingVDBA/
 │ └── [ResultsMarkdown.Rmd](https://github.com/OakAlice/EvaluatingVDBA/blob/main/Scripts/ResultsMarkdown.Rmd)
 └── Output/
   └── Plots and summary tables...
+```
 
 ## Acknowledgements
 Project was conceptualised by Chris Clemente. Data collected from various publically available sources as well as unpublished data personally provided by Jordan Di Cicco, Jasmin Annett, Josh Gaschk, Chris Clemente, and Gabby Sparkes. Analysis conducted by Oakleigh Wilson (me). Conceptual assistance from Pasha van Bijlert.
