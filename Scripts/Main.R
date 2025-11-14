@@ -17,19 +17,21 @@ p_load(tidyverse,
        rhdf5,
        ctmm,
        signal,
-       lmerTest
+       lmerTest,
+       mgcv
        )
 
 # base_path <- "C:/Users/oaw001/OneDrive - University of the Sunshine Coast/EvaluatingVDBA"
 base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 
 # clear the system
-# all_csvs <- list.files(file.path(base_path, "AccelerometerData"), 
+# all_csvs <- list.files(file.path(base_path, "AccelerometerData"),
 #                        pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
-# # Keep only the raw data or individual analysis
+# Keep only the raw data or individual analysis
 # raw_csvs <- grep("/raw/", all_csvs, value = TRUE)
-# raw_csvs <- grep("/Individual_Analyses/", raw_csvs, value = TRUE)
-# to_delete <- setdiff(all_csvs, raw_csvs)
+# ind_csvs <- grep("/Individual_Analyses/", all_csvs, value = TRUE)
+# keep_csvs <- c(raw_csvs, ind_csvs)
+# to_delete <- setdiff(all_csvs, keep_csvs)
 # file.remove(to_delete)
 
 # Variables #####
@@ -39,7 +41,7 @@ species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive =
 
 ## EXPERIMENTATION #####
 # Experimenting with Sampling Rate ----------------------------------------
-source(file = file.path(base_path, "Scripts", "SamplingRateExperiment.R"))
+# source(file = file.path(base_path, "Scripts", "SamplingRateExperiment.R"))
 
 ## PREPARE ALL DATASETS #####
 # Get all datasets into a consistent format -------------------------------
@@ -53,7 +55,7 @@ for (dataset in species_list){
   if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))){
     print("already refomatted")
   } else {
-    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "FormattingRawData.csv"))
+    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "FormattingRawData.R"))
   }
 
   # Filtering ---------------------------------------------------------------
@@ -62,6 +64,12 @@ for (dataset in species_list){
   } else {
     source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "SmoothingRawData.R"))
   }
+}
+
+# Generating summary of the data ------------------------------------------
+for (dataset in species_list){
+  species <- basename(dataset)
+  source(file = file.path(base_path, "Scripts", "DatasetCharacteristics.R"))
 }
 
 

@@ -83,6 +83,7 @@ if (species == "Wanja_Fox"){
     
     # stitch it all together
     data[, `:=`(Time = Time, ID = ID)]
+    data <- data[1:(nrow(data)/4), ]
     
     H5close() # close the file
     data
@@ -115,7 +116,7 @@ if (species == "Wanja_Fox"){
   rm(dfs)
 
 } else if (species %in% c("Annett_Possum", "DiCicco_Perentie", "Galea_Cat", 
-                          "Annett_Bettong")){
+                          "Annett_Bettong", "Annett_Wallaby")){
   
   pattern_dictionary <- list("Annett_Possum" = "^[0-9]{5}_.+\\.csv$",
                             "DiCicco_Perentie" = "^[0-9]{5}.+\\.csv$",
@@ -126,10 +127,13 @@ if (species == "Wanja_Fox"){
   files <- list.files(file.path(base_path, "AccelerometerData", species, "raw"), full.names = TRUE, pattern = pattern_dictionary[[species]], ignore.case = TRUE)
 
   dfs <- lapply(files, function(x){
-    reformat_clemente_data(x)
+    dat <- reformat_clemente_data(x)
+    if (species == "Galea_Cat"){
+      dat <- dat[1:(nrow(dat)/4),]
+    }
+    dat
   })
   data <- rbindlist(dfs)
-  rm(dfs)
 
 } else if (species == "Annett_Glider"){
   
@@ -147,7 +151,7 @@ if (species == "Wanja_Fox"){
     dat <- dat[, 1:4]
     colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
     dat$Time <- as.POSIXct(dat$Time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
-    dat$ID <- tools::file_path_sans_ext(basename(x))
+    dat$ID <- "6017913_0000000000"
     data <- dat
     
 } else if (species %in% c("Smit_Cat", "Studd_Squirrel", "Clemente_Echidna", "HarveyCaroll_Pangolin", "Vehkaoja_Dog")){
@@ -271,41 +275,22 @@ if (species == "Wanja_Fox"){
   })
   data <- rbindlist(dfs)
   
-} else if (species %in% c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll")){
-  # this is for the really big datasets
-  file.pattern <- if (species == "Annett_Kangaroo"){"[Cc]ollar[0-9]{1,2}\\.csv$"
-                    } else if (species == "Clemente_Impala"){"^Collar_"
-                    } else if (species == "Gasch_Quoll"){"_[0-9]{5}.csv$"
-                    }
-  files <- list.files(
-    file.path(base_path, "AccelerometerData", species, "raw"),
-    pattern = file.pattern,
-    full.names = TRUE,
-    recursive = TRUE
-  )
+} else if (species == "Gaschk_Quoll"){
+  files <- list.files(file.path(base_path, "AccelerometerData", species, "raw"), full.names = TRUE)
   
   data <- lapply(files, function(file) {
     
       collar_number <- tools::file_path_sans_ext(basename(file))
       
       # Species-specific collar ID extraction
-      collar_number <- switch(
-        species,
-        "Gaschk_Quoll"     = str_split(collar_number, "_")[[1]][1],
-        "Clemente_Impala"  = str_split(collar_number, "_")[[1]][2],
-        "Annett_Kangaroo"  = str_extract(collar_number, "\\d+"),
-        collar_number
-      )
+      collar_number <- str_split(collar_number, "_")[[1]][1]
       
       # Format the data into a standardised format
       dat <- reformat_clemente_data(file)
       
       # add in the ID
       dat[, ID := collar_number]
-      
-      # save intermittently
-      output_dir <- file.path(base_path, "AccelerometerData", species, "Individual_Analyses")
-      fwrite(dat, file.path(output_dir, paste0(species, "_", collar_number, "_reformatted.csv")))
+      dat <- dat[1:(nrow(dat)/4),]
     })
   
   data <- rbindlist(data)
@@ -320,19 +305,6 @@ if (species == "Wanja_Fox"){
            Accel.Y = Int_aY,
            Accel.Z = Int_aZ)
 
-} else if (species == "Mezzini_WhiteDeer"){
-  data <- readRDS(file.path(base_path, "AccelerometerData", "Mezzini_WhiteDeer", "raw", "years-1-and-2-data-no-akde.rds"))
-  
-  # Assume `tele <- buffalo`
-  dt_list <- lapply(data$tel, as.data.frame)
-  dt <- rbindlist(dt_list, idcol = "ID")
-  
-  data <- dt %>% 
-    select(ID, timestamp, x, y) %>% 
-    rename(Time = timestamp,
-           Accel.X = x,
-           Accel.Y = y)
-  
 } else if (species == "Studd_Lynx"){
   files <- list.files(file.path(base_path, "AccelerometerData", "Studd_Lynx", "raw"), full.names = TRUE)
   data <- lapply(files, function(x){
@@ -452,7 +424,27 @@ if (species == "Wanja_Fox"){
     df
   })
   data <- rbindlist(data)
+
+} else if (species == "Annett_Kangaroo"){
   
+  files <- list.files(file.path(base_path, "AccelerometerData", "Annett_Kangaroo", "Individual_Analyses"), full.names = TRUE)
+  data <- lapply(files, function(x){
+    fread(x) %>%
+      select(ID, Time, Accel.X, Accel.Y, Accel.Z)
+  })
+  data <- rbindlist(data)
+
+} else if (species == "Clemente_Impala"){
+  
+  files <- list.files(file.path(base_path, "AccelerometerData", "Clemente_Impala", "raw"), full.names = TRUE)
+  data <- lapply(files, function(x){
+    dat <- fread(x)
+    colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
+    dat$ID <- str_split(basename(x), "_")[[1]][2]
+    dat <- dat[1:(nrow(dat)/4),]
+    dat
+  })
+  data <- rbindlist(data)
   
 } else { # everythindataset_variables} else { # everything else
   data <- reformat_eobs_data(data)
@@ -463,9 +455,9 @@ if (!"ID" %in% colnames(data)){
   data$ID <- rep("Unsure", nrow(data))
 }
 
-# crop the files to a maximum size
-one_day <- as.numeric(dataset_variables[Name == species]$Frequency) * (60*60*max_samples)
-data <- data[, .SD[1:min(one_day, .N)], by = ID]
+# crop the files to a maximum size ## REMOVE THIS LINE TO SEE WHAT HAPPENS
+# one_day <- as.numeric(dataset_variables[Name == species]$Frequency) * (60*60*max_samples)
+# data <- data[, .SD[1:min(one_day, .N)], by = ID]
 
 # only seelct the columns we want
 data <- data[, c("ID", "Time", "Accel.X", "Accel.Y", "Accel.Z")]

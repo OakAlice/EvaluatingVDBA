@@ -7,9 +7,7 @@ data <- na.omit(data)
 # Define sampling frequency and cutoff frequency
 freq <- as.numeric(dataset_variables[Name == species]$Frequency) # Hz
 
-cutoff_freq <- 0.5
-# Calculate normalised cutoff frequency
-Wn <- cutoff_freq / (freq / 2)
+Wn <- 0.05
 
 # Design a 4th-order low-pass Butterworth filter
 filter_coeffs <- butter(n = 2, W = Wn, type = "low")

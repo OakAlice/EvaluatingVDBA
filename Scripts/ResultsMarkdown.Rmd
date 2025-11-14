@@ -49,7 +49,16 @@ threshold_cols <- c(
 
 ```
 
-## PART 1: Individual Analysis
+# Methods
+
+- 37 species datasets of raw tri-axial accelerometer data.
+- Formatted to standard data structure
+- Smoothed outliers with a butterworth filter (cutoff_freq, 0.5 Hz, to remove only sudden spikes)
+- Generated dynamic VDBA by removing static acceleration (either as a rolling average of 10 seconds of VDBA for continuous data or as the average of the burst)
+- Separated instances into active and inactive categories such that all instances with a rolling standard deviation (measure of flatness in the rolling window) in the botton 25% were classed as inactive.
+- Summarised max and mean VDBA per individual.
+
+## Individual Analysis
 Where the masses of the exact individual are known. Per species plot and then all known individuals on the same graph.
 ```{r echo = FALSE}
 species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "Sparkes_Koala", "Clemente_Kudu", "HarveyCaroll_Pangolin", "Vehkaoja_Dog")
@@ -109,9 +118,9 @@ summary(max_model)
 
 ```
 
-## PART 2: Single System analysis
-Where exact masses are not included (species averages) but all data is collected using the same accelerometer sampling protocol.
-# V1: Axivity
+## Single system analysis
+Where exact masses are not included (species averages) but all data is collected using the same accelerometer sampling protocol.Repeated for all Clemente datasets and for all Buchmann datasets. 
+# V1: Axivity (Clemente)
 ```{r echo = FALSE}
 axivity_species <- dataset_variables$Name[dataset_variables$Device == "Axivity" & dataset_variables$Type == "Mam"]
 
@@ -194,10 +203,13 @@ summary(buchmann_model)
 
 ```
 
-## PART 3: All Species
+## All species pooled
 All species, with approximate/average masses. 
 ```{r, echo = FALSE}
 all_summary_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "*_summary\\.csv$", full.names = TRUE)
+
+# all_summary_files <- setdiff(all_summary_files,  "C:/Users/PC/Documents/EvaluatingVDBA/AccelerometerData/Studd_Squirrel/Studd_Squirrel_summary.csv")
+
 
 vdba_data <- lapply(all_summary_files, function(x){
   dat <- fread(x) %>% na.omit()
@@ -207,14 +219,16 @@ vdba_data <- lapply(all_summary_files, function(x){
 })
 vdba_data <- rbindlist(vdba_data, fill = TRUE)
 
-vdba_data <- vdba_data %>%
-  select(ID, threshold, meanVDBA, minVDBA, maxVDBA, Name) %>%
-  dplyr::filter(!Name == "Chakravarty_Meerkat")
-
 vdba_stuff1 <- merge(vdba_data, dataset_variables, by = 'Name')
 
+vdba_data <- vdba_data %>%
+  select(ID, threshold, meanVDBA, minVDBA, maxVDBA, Name, LogMass) %>%
+  dplyr::filter(!Name == "Chakravarty_Meerkat")
+
+fwrite(vdba_data, file,path(base_path, "Output", "All_summary_data.csv"))
+
 # summarise by dataset
-vdba_stuff1_summarised <- vdba_stuff1 %>% group_by(Name, threshold, LogMass) %>%
+vdba_stuff1_summarised <- vdba_stuff %>% group_by(Name, threshold, LogMass) %>%
    summarise(meanVDBA = mean(meanVDBA),
              maxVDBA = mean(maxVDBA),
              minVDBA = mean(minVDBA)
@@ -240,12 +254,36 @@ p5 <- ggplot(vdba_stuff1, aes(x = LogMass, y = log10(maxVDBA), shape = threshold
 p5
 
 # stats ------------------------------------------------------------------------
-all_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Name) + (1|DeviceAttachment), data = vdba_stuff1)
+all_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + Frequency + (1 | Name) + (1|DeviceAttachment), data = vdba_stuff1)
 summary(all_model)
 
 ```
 
 
 
+## Curvi-linear trend
+Chris says: "I wonder if you picked only the highest VDBA for each body mass, and used a GAMS model to predict the pattern, would it be hump shaped? with a peak around 50kg? A curvilinear trend might also explain why sometimes we see a positive slope (e.g. with quolls, small size) and a negative slope with kangaroos (large body size)"
+
+```{r echo = FALSE}
+
+# summarise by dataset
+vdba_stuff_max <- vdba_stuff1 %>% group_by(Name, threshold, LogMass) %>%
+   summarise(maxVDBA = max(maxVDBA)) %>%
+  dplyr::filter(threshold == "active")
+
+# Plots ------------------------------------------------------------------------
+p6 <- ggplot(vdba_stuff_max, aes(x = LogMass, y = log10(maxVDBA))) +
+  geom_point(aes(colour = Name)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() +  # reset the colour scale
+  geom_smooth(method = "gam", colour = "ivory3", se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme()
+p6
 
 
+# stats ------------------------------------------------------------------------
+gam_model <- gam(log10(maxVDBA) ~ s(LogMass), data = vdba_stuff_max)
+summary(gam_model)
+
+```
