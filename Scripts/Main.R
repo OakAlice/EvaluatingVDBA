@@ -39,6 +39,9 @@ dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 source(file = file.path(base_path, "Scripts", "GeneralFunctions.R")) # general functions
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
 
+maxxed_species <- c("Annett_Bettong", "Neis_Cow", "Pagano_Bear",
+                    "Sparkes_Koala", "Vehkaoja_Dog")
+
 ## EXPERIMENTATION #####
 # Experimenting with Sampling Rate ----------------------------------------
 # source(file = file.path(base_path, "Scripts", "SamplingRateExperiment.R"))
@@ -59,11 +62,11 @@ for (dataset in species_list){
   }
 
   # Filtering ---------------------------------------------------------------
-  # if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv")))){
-  #  print("already smoothed")
-  # } else {
+  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv")))){
+    print("already smoothed")
+  } else {
     source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "CleanFormattedData.R"))
-  # }
+  }
 }
 
 # Generating summary of the data ------------------------------------------
@@ -93,9 +96,9 @@ for (dataset in species_list){
     next
   }
   print(species)
-  # Calculating and thresholding between active and inactive for each species
+  # Calculating and thresholding  between active and inactive for each species
   if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
-    print("already summarised")
+     print("already summarised")
   } else {
      source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
   }

@@ -96,21 +96,14 @@ if (species == "Wanja_Fox"){
   # only select the first 100 files from each individual
   all_files <- list.files(file.path(base_path, "AccelerometerData/Sparkes_Koala", "raw"),
                           recursive = TRUE, full.names = TRUE)
-  subdirs <- dirname(all_files) %>% basename()
-  files_by_subdir <- split(all_files, subdirs)
-  first40_per_subdir <- lapply(files_by_subdir, function(x) head(x, 40))
-  files <- unlist(first40_per_subdir, use.names = FALSE)
-  
-  dfs <- lapply(files, function(x){
+  dfs <- lapply(all_files, function(x){
     dat <- fread(x)
     dat <- dat[, 2:5]
     colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
     dat$Time <- as.POSIXct((dat$Time - 719529)*86400, origin = "1970-01-01", tz = "UTC")
     dat$ID <- str_split(tools::file_path_sans_ext(basename(x)), "_")[[1]][1]
+    dat <- dat[1:(nrow(dat)/4), ]
     dat
-  })
-  dfs <- lapply(files, function(x){
-    reformat_clemente_data(x)
   })
   data <- rbindlist(dfs)
   rm(dfs)
