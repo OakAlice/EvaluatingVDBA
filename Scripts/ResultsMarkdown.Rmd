@@ -63,7 +63,7 @@ threshold_cols <- c(
 ## Individual Analysis
 Where the masses of the exact individual are known. Per species plot and then all known individuals on the same graph.
 ```{r echo = FALSE}
-species <- c("Annett_Kangaroo", "Gaschk_Quoll", "Sparkes_Koala", "Clemente_Kudu", "HarveyCaroll_Pangolin", "Vehkaoja_Dog") # "Clemente_Impala",
+species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "Sparkes_Koala", "Clemente_Kudu", "HarveyCaroll_Pangolin") # "Vehkaoja_Dog"
 
 # Analysis ----------------------------------------------------------------
 all_summaries <- lapply(species, function(x){

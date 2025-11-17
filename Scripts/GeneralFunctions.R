@@ -116,42 +116,96 @@ generate_vdba <- function(accel, species, dataset_variables){
   return(accel)
 }
 
-
-summarise_vdba <- function(accel, species, dataset_variables){
+# smooth it out based on a rolling window
+smooth_vdba <- function(accel, species, dataset_variables, window = 1) {
   
   freq <- as.numeric(dataset_variables[Name == species]$Frequency)
   if (is.na(freq)) stop("Frequency missing for species: ", species)
-  win <- 10 * freq  # smoothing window
+  win <- window * freq
+  if (win < 2) stop("Window size too small.")
+  # smooth VeDBA using rolling mean
+  accel[, smooth_vdba := frollmean(vedba, n = win, align = "center", fill = NA)]
+  accel<- accel %>% select(ID, Time, smooth_vdba) %>% na.omit()
   
-  # find the max of the static periods
-  accel$rolling_sd <- roll_sd(accel$vedba, n = win, fill = NA, align = "center") # get the sd of the rolling windows
-  static_idx <- which(accel$rolling_sd < quantile(accel$rolling_sd, 0.25, na.rm = TRUE)) # periods of flat
-  static_accel <- accel[static_idx, ]
-  threshold_pct <- max(static_accel$vedba, na.rm = TRUE) # max acceleration in the flat periods
+  return(accel)
+}
+
+summarise_vdba <- function(accel, species, dataset_variables){
   
-  accel <- accel %>%
-    na.omit() %>%
-    mutate(threshold = ifelse(vedba > threshold_pct, "active", "inactive"))
+  sampling_style <- dataset_variables[Name == species]$SamplingStyle
   
-  summary <- accel %>%
+  if (sampling_style == "Continuous"){
+    freq <- as.numeric(dataset_variables[Name == species]$Frequency)
+    if (is.na(freq)) stop("Frequency missing for species: ", species)
+    win <- 5 * freq  # smoothing window
+    
+    # find the max of the static periods
+    accel$rolling_sd <- roll_sd(accel$smooth_vdba, n = win, fill = NA, align = "center") # get the sd of the rolling windows
+    static_idx <- which(accel$rolling_sd < quantile(accel$rolling_sd, 0.25, na.rm = TRUE)) # periods of flat
+    static_accel <- accel[static_idx, ]
+    threshold_pct <- max(static_accel$smooth_vdba, na.rm = TRUE) # max acceleration in the flat periods
+    
+    accel <- accel %>%
+      na.omit() %>%
+      mutate(threshold = ifelse(smooth_vdba > threshold_pct, "active", "inactive"))
+    
+   summary <- accel %>%
     group_by(ID, threshold) %>%
     summarise(
-      meanVDBA = mean(vedba, na.rm = TRUE),
-      minVDBA = min(vedba, na.rm = TRUE),
-      maxVDBA = max(vedba, na.rm = TRUE),
+      meanVDBA = mean(smooth_vdba, na.rm = TRUE),
+      minVDBA = min(smooth_vdba, na.rm = TRUE),
+      maxVDBA = max(smooth_vdba, na.rm = TRUE),
       .groups = "drop"
     )
   
   overall_summary <- accel %>%
     group_by(ID) %>%
     summarise(
-      meanVDBA = mean(vedba, na.rm = TRUE),
-      minVDBA = min(vedba, na.rm = TRUE),
-      maxVDBA = max(vedba, na.rm = TRUE),
+      meanVDBA = mean(smooth_vdba, na.rm = TRUE),
+      minVDBA = min(smooth_vdba, na.rm = TRUE),
+      maxVDBA = max(smooth_vdba, na.rm = TRUE),
       .groups = "drop"
     ) %>%
     mutate(threshold = "all")
+    
+    
+  } else { # if its in bursts
+    accel <- detect_bursts(accel, gap_threshold = 1)
+    threshold_pct <- accel %>%
+      group_by(burst_id) %>%
+      summarise(sd = sd(vedba, na.rm = TRUE)) %>%
+      arrange(sd) %>%
+      ungroup() %>%
+      slice(floor(n() * 0.25))
+    threshold_pct <- threshold_pct$sd
+    
+    accel <- accel %>%
+      na.omit() %>%
+      group_by(ID, burst_id) %>%
+      summarise(mean_vedba = mean(vedba)) %>%
+      mutate(threshold = ifelse(mean_vedba > threshold_pct, "active", "inactive"))
+    
+    summary <- accel %>%
+      group_by(ID, threshold) %>%
+      summarise(
+        meanVDBA = mean(mean_vedba, na.rm = TRUE),
+        minVDBA = min(mean_vedba, na.rm = TRUE),
+        maxVDBA = max(mean_vedba, na.rm = TRUE),
+        .groups = "drop"
+      )
+    
+    overall_summary <- accel %>%
+      group_by(ID) %>%
+      summarise(
+        meanVDBA = mean(mean_vedba, na.rm = TRUE),
+        minVDBA = min(mean_vedba, na.rm = TRUE),
+        maxVDBA = max(mean_vedba, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      mutate(threshold = "all")
+  }
   
+  # bind them together
   vedba_stats <- rbind(summary, overall_summary)
   
   return(vedba_stats)
