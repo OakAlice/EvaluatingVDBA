@@ -92,16 +92,13 @@ for (dataset in species_list){
 # Generating VBDA ---------------------------------------------------------
 for (dataset in species_list){
   species <- basename(dataset)
-  # if (species == "Clemente_Impala"){
-  #   next
-  # }
   print(species)
   # Calculating and thresholding  between active and inactive for each species
-  # if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
-  #    print("already summarised")
-  # } else {
+  if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
+    print("already summarised")
+  } else {
      source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
-  # }
+  }
 }
 
 ## ANALYSIS #####
