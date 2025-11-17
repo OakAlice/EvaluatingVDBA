@@ -121,11 +121,12 @@ smooth_vdba <- function(accel, species, dataset_variables, window = 1) {
   
   freq <- as.numeric(dataset_variables[Name == species]$Frequency)
   if (is.na(freq)) stop("Frequency missing for species: ", species)
-  win <- window * freq
   
   if (freq < 10){
     window <- 5
   } 
+  
+  win <- window * freq
   
   # smooth VeDBA using rolling mean
   accel[, smooth_vdba := frollmean(vedba, n = win, align = "center", fill = NA)]

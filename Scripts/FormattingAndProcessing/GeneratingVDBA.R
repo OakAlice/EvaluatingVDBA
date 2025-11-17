@@ -13,10 +13,14 @@ accel <- generate_vdba(accel, species, dataset_variables)
 # fwrite(accel, file.path(base_path, "AccelerometerData", species, 
 #                       paste0(species, "_processed.csv")))
 
+# ggplot(accel, aes(x = seq(1:nrow(accel)), y = vedba)) + geom_line()
+
 sampling_style <- dataset_variables[Name == species]$SamplingStyle
 if (sampling_style == "Continuous"){
   accel <- smooth_vdba(accel, species, dataset_variables, window = 1)
 }
+
+# ggplot(accel, aes(x = seq(1:nrow(accel)), y = smooth_vdba)) + geom_line()
 
 vedba_stats <- summarise_vdba(accel, species, dataset_variables)
   
