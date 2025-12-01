@@ -16,12 +16,13 @@ if (sampling_style == "Continuous"){
 
 accel <- generate_threshold(accel, species, dataset_variables)
 
-
 # making some diagnostic plots ---------------------------------------------
 # plot the smoothed data and then where the threshold is
-samples <- 
-accel_sample <- accel[1:10000, ]
-p1 <- ggplot(accel_sample, aes(x = seq(1:nrow(accel)), y = smooth_vdba, colour = threshold, group = 1)) + geom_line()
+samples <- min(
+  as.numeric(dataset_variables[Name == species]$Frequency) * 60 * 60, nrow(accel)
+)
+accel_sample <- accel[1:samples, ]
+p1 <- ggplot(accel_sample, aes(x = seq(1:nrow(accel_sample)), y = smooth_vdba, colour = threshold, group = 1)) + geom_line()
 p2 <- ggplot(accel_sample, aes(x = smooth_vdba, fill = threshold)) +
   geom_histogram(alpha = 0.6, position = "identity", bins = 50) +
   labs(y = "Frequency", fill = "Threshold") +

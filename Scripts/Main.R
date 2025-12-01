@@ -28,10 +28,10 @@ base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 all_csvs <- list.files(file.path(base_path, "AccelerometerData"),
                        pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
 # Keep only the raw data or individual analysis
-summary_csvs <- grep("summary", all_csvs, value = TRUE)
-# keep_csvs <- c(raw_csvs, ind_csvs)
-to_delete <- summary_csvs
-file.remove(to_delete)
+# summary_csvs <- grep("summary", all_csvs, value = TRUE)
+# # keep_csvs <- c(raw_csvs, ind_csvs)
+# to_delete <- summary_csvs
+# file.remove(to_delete)
 
 # Variables #####
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))

@@ -75,7 +75,7 @@ generate_vdba <- function(accel, species, dataset_variables){
     
     freq <- as.numeric(dataset_variables[Name == species]$Frequency)
     if (is.na(freq)) stop("Frequency missing for species: ", species)
-    win <- 10 * freq  # smoothing window
+    win <- 2 * freq  # smoothing window
     
     # calculate the static accelerations
     ax_static <- frollmean(accel$Accel.X, n = win, align = "center", fill = NA)
@@ -136,47 +136,56 @@ smooth_vdba <- function(accel, species, dataset_variables, window = 1) {
   return(accel)
 }
 
-generate_threshold <- function(accel, species, dataset_variables) {
-  
-  sampling_style <- dataset_variables[Name == species]$SamplingStyle
-  
-  if (sampling_style == "Continuous") {
-    
-    freq <- as.numeric(dataset_variables[Name == species]$Frequency)
-    if (is.na(freq)) stop("Frequency missing for species: ", species)
-    win <- 5 * freq
-    
-    accel$rolling_sd <- roll_sd(accel$smooth_vdba, n = win, fill = NA, align = "center")
-    
-    static_idx <- which(accel$rolling_sd < quantile(accel$rolling_sd, 0.25, na.rm = TRUE))
-    static_accel <- accel[static_idx, ]
-    threshold_pct <- max(static_accel$smooth_vdba, na.rm = TRUE)
-    
-    accel <- accel %>%
-      na.omit() %>%
-      mutate(threshold = ifelse(smooth_vdba > threshold_pct, "active", "inactive"))
-    
-  } else {
-    
-    accel <- detect_bursts(accel, gap_threshold = 1)
-    
-    threshold_pct <- accel %>%
-      group_by(burst_id) %>%
-      summarise(sd = sd(vedba, na.rm = TRUE), .groups = "drop") %>%
-      arrange(sd) %>%
-      slice(floor(n() * 0.25)) %>%
-      pull(sd)
-    
-    accel <- accel %>%
-      na.omit() %>%
-      group_by(ID, burst_id) %>%
-      summarise(mean_vedba = mean(vedba), .groups = "drop") %>%
-      mutate(threshold = ifelse(mean_vedba > threshold_pct, "active", "inactive"))
-  }
-  
-  return(accel)
-}
+# generate_threshold <- function(accel, species, dataset_variables) {
+#   
+#   sampling_style <- dataset_variables[Name == species]$SamplingStyle
+#   
+#   if (sampling_style == "Continuous") {
+#     
+#     freq <- as.numeric(dataset_variables[Name == species]$Frequency)
+#     if (is.na(freq)) stop("Frequency missing for species: ", species)
+#     win <- 5 * freq
+#     
+#     accel$rolling_sd <- roll_sd(accel$smooth_vdba, n = win, fill = NA, align = "center")
+#     
+#     static_idx <- which(accel$rolling_sd < quantile(accel$rolling_sd, 0.25, na.rm = TRUE))
+#     static_accel <- accel[static_idx, ]
+#     threshold_pct <- mean(static_accel$smooth_vdba, na.rm = TRUE)
+#     
+#     accel <- accel %>%
+#       na.omit() %>%
+#       mutate(threshold = ifelse(smooth_vdba > threshold_pct, "active", "inactive"))
+#     
+#   } else {
+#     
+#     accel <- detect_bursts(accel, gap_threshold = 1)
+#     
+#     threshold_pct <- accel %>%
+#       group_by(burst_id) %>%
+#       summarise(sd = sd(vedba, na.rm = TRUE), .groups = "drop") %>%
+#       arrange(sd) %>%
+#       slice(floor(n() * 0.25)) %>%
+#       pull(sd)
+#     
+#     accel_activities <- accel %>%
+#       na.omit() %>%
+#       group_by(ID, burst_id) %>%
+#       summarise(sd = sd(vedba, na.rm = TRUE), .groups = "drop") %>%
+#       mutate(threshold = ifelse(sd > threshold_pct, "active", "inactive"))
+#     
+#     accel <- merge(accel, accel_activities, by = c("ID", "burst_id"))
+#       
+#   }
+#   
+#   return(accel)
+# }
 
+# back up version, trialling a new method
+generate_threshold <- function(accel, species, dataset_variables) {
+  accel <- accel %>%
+    na.omit() %>%
+    mutate(threshold = ifelse(smooth_vdba > 0.05, "active", "inactive"))
+}
 
 summarise_vdba <- function(accel, is_burst = FALSE) {
   
