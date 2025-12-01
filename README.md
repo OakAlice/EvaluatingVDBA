@@ -12,28 +12,27 @@ Bio-logging accelerometers are frequently used to estimate energetic output (met
 - Summarised max and mean VDBA per individual.
 
 ## Understanding the Repo
-```
-EvaluatingVDBA/
-├── AccelerometerData/
-│ └── Species1/
-│ ├── raw/
-│ │    └── raw_files.csv
-│ └── Mass_of_Individuals.csv
-├── Scripts/
-│ ├── FormattingAndProcessing/
-│ │ ├── [FormattingRawData.R](https://github.com/OakAlice/EvaluatingVDBA/blob/main/Scripts/FormattingAndProcessing/FormattingRawData.R)
-│ │ ├── [SmoothingRawData.R](https://github.com/OakAlice/EvaluatingVDBA/blob/main/Scripts/FormattingAndProcessing/SmoothingRawData.R)
-│ │ ├── [GenerateVDBA.R](https://github.com/OakAlice/EvaluatingVDBA/blob/main/Scripts/FormattingAndProcessing/GeneratingVDBA.R)
-│ │ └── script6.R
-│ ├── [Main.R](https://github.com/OakAlice/EvaluatingVDBA/blob/main/Scripts/Main.R)
-│ ├── [GeneralFunctions.R](https://github.com/OakAlice/EvaluatingVDBA/blob/main/Scripts/GeneralFunctions.R)
-│ ├── [DatasetCharacteristics.R](https://github.com/OakAlice/EvaluatingVDBA/blob/main/Scripts/DatasetCharacteristics.R)
-│ └── [ResultsMarkdown.Rmd](https://github.com/OakAlice/EvaluatingVDBA/blob/main/Scripts/ResultsMarkdown.Rmd)
-└── Output/
-  └── Plots and summary tables...
-```
+EvaluatingVDBA/  
+├── AccelerometerData/  
+│   └── Species1/  
+│       └── raw/  
+│           └── raw_files.csv  
+├── Mass_of_individuals/  
+│   └── data_for_that_species.csv  
+├── Scripts/  
+│   ├── FormattingAndProcessing/  
+│   │   ├── [FormattingRawData.R](Scripts/FormattingAndProcessing/FormattingRawData.R)  
+│   │   ├── [SmoothingRawData.R](Scripts/FormattingAndProcessing/SmoothingRawData.R)  
+│   │   ├── [GenerateVDBA.R](Scripts/FormattingAndProcessing/GeneratingVDBA.R)  
+│   │   └── script6.R  
+│   ├── [Main.R](Scripts/Main.R)  
+│   ├── [GeneralFunctions.R](Scripts/GeneralFunctions.R)  
+│   ├── [DatasetCharacteristics.R](Scripts/DatasetCharacteristics.R)  
+│   └── [ResultsMarkdown.Rmd](Scripts/ResultsMarkdown.Rmd)  
+└── Output/  
+    └── Plots and summary tables...  
 
 ## Acknowledgements
-Project was conceptualised by Chris Clemente. Data collected from various publically available sources as well as unpublished data personally provided by Jordan Di Cicco, Jasmin Annett, Josh Gaschk, Chris Clemente, and Gabby Sparkes. Analysis conducted by Oakleigh Wilson (me). Conceptual assistance from Pasha van Bijlert.
+Project was conceptualised and lead by Chris Clemente. Data collected from various publically available sources as well as unpublished data personally provided by Jordan Di Cicco, Jasmin Annett, Josh Gaschk, Chris Clemente, and Gabby Sparkes. Analysis conducted by Oakleigh Wilson (me). Conceptual assistance from Pasha van Bijlert.
 
 
