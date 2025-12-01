@@ -25,14 +25,13 @@ p_load(tidyverse,
 base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 
 # clear the system
-# all_csvs <- list.files(file.path(base_path, "AccelerometerData"),
-#                        pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
+all_csvs <- list.files(file.path(base_path, "AccelerometerData"),
+                       pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
 # Keep only the raw data or individual analysis
-# raw_csvs <- grep("/raw/", all_csvs, value = TRUE)
-# ind_csvs <- grep("/Individual_Analyses/", all_csvs, value = TRUE)
+summary_csvs <- grep("summary", all_csvs, value = TRUE)
 # keep_csvs <- c(raw_csvs, ind_csvs)
-# to_delete <- setdiff(all_csvs, keep_csvs)
-# file.remove(to_delete)
+to_delete <- summary_csvs
+file.remove(to_delete)
 
 # Variables #####
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
@@ -75,8 +74,6 @@ for (dataset in species_list){
   source(file = file.path(base_path, "Scripts", "DatasetCharacteristics.R"))
 }
 
-
-
 # Filtering outliers and downsampling to standard rate --------------------
 # standard_sampling_rate <- 10
 # if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv")))){
@@ -97,7 +94,7 @@ for (dataset in species_list){
   if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
     print("already summarised")
   } else {
-     source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
+    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
   }
 }
 

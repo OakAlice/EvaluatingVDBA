@@ -122,6 +122,7 @@ smooth_vdba <- function(accel, species, dataset_variables, window = 1) {
   freq <- as.numeric(dataset_variables[Name == species]$Frequency)
   if (is.na(freq)) stop("Frequency missing for species: ", species)
   
+  window <- 2
   if (freq < 10){
     window <- 5
   } 
@@ -130,88 +131,84 @@ smooth_vdba <- function(accel, species, dataset_variables, window = 1) {
   
   # smooth VeDBA using rolling mean
   accel[, smooth_vdba := frollmean(vedba, n = win, align = "center", fill = NA)]
-  accel<- accel %>% select(ID, Time, smooth_vdba) %>% na.omit()
+  # accel<- accel %>% select(ID, Time, smooth_vdba) %>% na.omit()
   
   return(accel)
 }
 
-summarise_vdba <- function(accel, species, dataset_variables){
+generate_threshold <- function(accel, species, dataset_variables) {
   
   sampling_style <- dataset_variables[Name == species]$SamplingStyle
   
-  if (sampling_style == "Continuous"){
+  if (sampling_style == "Continuous") {
+    
     freq <- as.numeric(dataset_variables[Name == species]$Frequency)
     if (is.na(freq)) stop("Frequency missing for species: ", species)
-    win <- 5 * freq  # smoothing window
+    win <- 5 * freq
     
-    # find the max of the static periods
-    accel$rolling_sd <- roll_sd(accel$smooth_vdba, n = win, fill = NA, align = "center") # get the sd of the rolling windows
-    static_idx <- which(accel$rolling_sd < quantile(accel$rolling_sd, 0.25, na.rm = TRUE)) # periods of flat
+    accel$rolling_sd <- roll_sd(accel$smooth_vdba, n = win, fill = NA, align = "center")
+    
+    static_idx <- which(accel$rolling_sd < quantile(accel$rolling_sd, 0.25, na.rm = TRUE))
     static_accel <- accel[static_idx, ]
-    threshold_pct <- max(static_accel$smooth_vdba, na.rm = TRUE) # max acceleration in the flat periods
+    threshold_pct <- max(static_accel$smooth_vdba, na.rm = TRUE)
     
     accel <- accel %>%
       na.omit() %>%
       mutate(threshold = ifelse(smooth_vdba > threshold_pct, "active", "inactive"))
     
-   summary <- accel %>%
-    group_by(ID, threshold) %>%
-    summarise(
-      meanVDBA = mean(smooth_vdba, na.rm = TRUE),
-      minVDBA = min(smooth_vdba, na.rm = TRUE),
-      maxVDBA = max(smooth_vdba, na.rm = TRUE),
-      .groups = "drop"
-    )
-  
-  overall_summary <- accel %>%
-    group_by(ID) %>%
-    summarise(
-      meanVDBA = mean(smooth_vdba, na.rm = TRUE),
-      minVDBA = min(smooth_vdba, na.rm = TRUE),
-      maxVDBA = max(smooth_vdba, na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    mutate(threshold = "all")
+  } else {
     
-    
-  } else { # if its in bursts
     accel <- detect_bursts(accel, gap_threshold = 1)
+    
     threshold_pct <- accel %>%
       group_by(burst_id) %>%
-      summarise(sd = sd(vedba, na.rm = TRUE)) %>%
+      summarise(sd = sd(vedba, na.rm = TRUE), .groups = "drop") %>%
       arrange(sd) %>%
-      ungroup() %>%
-      slice(floor(n() * 0.25))
-    threshold_pct <- threshold_pct$sd
+      slice(floor(n() * 0.25)) %>%
+      pull(sd)
     
     accel <- accel %>%
       na.omit() %>%
       group_by(ID, burst_id) %>%
-      summarise(mean_vedba = mean(vedba)) %>%
+      summarise(mean_vedba = mean(vedba), .groups = "drop") %>%
       mutate(threshold = ifelse(mean_vedba > threshold_pct, "active", "inactive"))
-    
-    summary <- accel %>%
-      group_by(ID, threshold) %>%
-      summarise(
-        meanVDBA = mean(mean_vedba, na.rm = TRUE),
-        minVDBA = min(mean_vedba, na.rm = TRUE),
-        maxVDBA = max(mean_vedba, na.rm = TRUE),
-        .groups = "drop"
-      )
-    
-    overall_summary <- accel %>%
-      group_by(ID) %>%
-      summarise(
-        meanVDBA = mean(mean_vedba, na.rm = TRUE),
-        minVDBA = min(mean_vedba, na.rm = TRUE),
-        maxVDBA = max(mean_vedba, na.rm = TRUE),
-        .groups = "drop"
-      ) %>%
-      mutate(threshold = "all")
   }
   
-  # bind them together
-  vedba_stats <- rbind(summary, overall_summary)
+  return(accel)
+}
+
+
+summarise_vdba <- function(accel, is_burst = FALSE) {
   
-  return(vedba_stats)
+  if (!"threshold" %in% names(accel)) {
+    stop("No threshold column found. Run generate_threshold() first.")
+  }
+  
+  if (is_burst) {
+    vdba_col <- "mean_vedba"
+  } else {
+    vdba_col <- "smooth_vdba"
+  }
+  
+  summary_state <- accel %>%
+    group_by(ID, threshold) %>%
+    summarise(
+      meanVDBA = mean(.data[[vdba_col]], na.rm = TRUE),
+      minVDBA  = min(.data[[vdba_col]], na.rm = TRUE),
+      maxVDBA  = max(.data[[vdba_col]], na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  summary_overall <- accel %>%
+    group_by(ID) %>%
+    summarise(
+      meanVDBA = mean(.data[[vdba_col]], na.rm = TRUE),
+      minVDBA  = min(.data[[vdba_col]], na.rm = TRUE),
+      maxVDBA  = max(.data[[vdba_col]], na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(threshold = "all")
+  
+  # Return combined
+  bind_rows(summary_state, summary_overall)
 }

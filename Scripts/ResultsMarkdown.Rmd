@@ -15,7 +15,6 @@ dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
 maxxed_species <- c("Annett_Bettong", "Neis_Cow", "Pagano_Bear", "Sparkes_Koala", "Vehkaoja_Dog")
 
-
 ```
 
 ```{r plot_thme, include=FALSE}
@@ -51,6 +50,18 @@ threshold_cols <- c(
 
 ```
 
+```{r}
+# collate the cvolumes to select the ines with a lot of data
+all_volumes <- lapply(species_list, function(x){
+  vol <- fread(file.path(x, paste0(basename(x), "_volume.csv")))
+  vol$Species <- basename(x)
+  vol
+})
+all_volumes <- rbindlist(all_volumes)
+
+big_volumes <- all_volumes[all_volumes$volume > 24, ]
+
+```
 # Methods
 
 - 37 species datasets of raw tri-axial accelerometer data.
@@ -63,7 +74,8 @@ threshold_cols <- c(
 ## Individual Analysis
 Where the masses of the exact individual are known. Per species plot and then all known individuals on the same graph.
 ```{r echo = FALSE}
-species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "Sparkes_Koala", "Clemente_Kudu", "HarveyCaroll_Pangolin") # "Vehkaoja_Dog"
+species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "Sparkes_Koala", "Clemente_Kudu", "HarveyCaroll_Pangolin", "Vehkaoja_Dog")
+species <- setdiff(species, maxxed_species)
 
 # Analysis ----------------------------------------------------------------
 all_summaries <- lapply(species, function(x){
@@ -91,7 +103,7 @@ p1 <- ggplot(all_data, aes(x = LogMass, y = log10(meanVDBA))) +
   my_theme()
 p1
 
-p1.2 <- ggplot(all_data, aes(x = LogMass, y = log10(maxVDBA))) +
+p1.2 <- ggplot(all_data%>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(maxVDBA))) +
   geom_point(aes(colour = Dataset, shape = threshold)) +
   scale_color_manual(values = fave_colours) +
   ggnewscale::new_scale_colour() + # reset the colour scale
@@ -120,12 +132,15 @@ p2.2 <- ggplot(all_data %>% dplyr::filter(threshold == "active"), aes(x = LogMas
   scale_color_manual(values = threshold_cols) +
   my_theme()
 p2.2
+```
 
+Ran the stats on the mean and then the max.
+```{r}
 # Stats -------------------------------------------------------------------
 mean_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Dataset), data = all_data)
 summary(mean_model)
 
-active_data <- all_data %>% filter(threshold == "active")
+active_data <- all_data %>% dplyr::filter(threshold == "active")
 max_model <- lmer(log10(maxVDBA) ~ LogMass + (1 | Dataset), data = active_data)
 summary(max_model)
 
@@ -136,7 +151,7 @@ Where exact masses are not included (species averages) but all data is collected
 # V1: Axivity (Clemente)
 ```{r echo = FALSE}
 axivity_species <- dataset_variables$Name[dataset_variables$Device == "Axivity" & dataset_variables$Type == "Mam"]
-axivity_species <- axivity_species[-6]
+axivity_species <- setdiff(axivity_species, maxxed_species)
 
 # Analysis ----------------------------------------------------------------
 axivity_summaries <- lapply(axivity_species, function(x){
@@ -167,11 +182,17 @@ p3.2 <- ggplot(axivity_summaries %>% dplyr::filter(threshold == "active"), aes(x
   scale_color_manual(values = threshold_cols) +
   my_theme()
 p3.2
+```
 
+Run the stats, mean then max.
+```{r}
 # Stats -------------------------------------------------------------------
 axivity_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Dataset), data = axivity_summaries)
 summary(axivity_model)
 
+active_data <- axivity_summaries %>% dplyr::filter(threshold == "active")
+max_model <- lmer(log10(maxVDBA) ~ LogMass + (1 | Dataset), data = active_data)
+summary(max_model)
 ```
 # V2: Buchmann
 ```{r echo = FALSE}
@@ -198,7 +219,7 @@ p3.3 <- ggplot(buchmann_summaries, aes(x = LogMass, y = log10(meanVDBA))) +
   my_theme()
 p3.3
 
-p3.4 <- ggplot(buchmann_summaries %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(meanVDBA))) +
+p3.4 <- ggplot(buchmann_summaries %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(maxVDBA))) +
   geom_point(aes(colour = Dataset)) +
   scale_color_manual(values = fave_colours) +
   ggnewscale::new_scale_colour() + # reset the colour scale
@@ -211,10 +232,9 @@ p3.4
 buchmann_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Dataset), data = buchmann_summaries)
 summary(buchmann_model)
 
-# buchmann_active_data <- buchmann_summaries %>% dplyr::filter(threshold == "active")
-# buchmann_max_model <- lmer(log10(maxVDBA) ~ LogMass + (1 | Dataset), data = buchmann_active_data)
-# summary(buchmann_max_model)
-
+buchmann_active_data <- buchmann_summaries %>% dplyr::filter(threshold == "active")
+buchmann_max_model <- lmer(log10(maxVDBA) ~ LogMass + (1 | Dataset), data = buchmann_active_data)
+summary(buchmann_max_model)
 ```
 
 ## All species pooled
@@ -231,6 +251,13 @@ vdba_data <- lapply(all_summary_files, function(x){
 vdba_data <- rbindlist(vdba_data, fill = TRUE)
 
 vdba_stuff1 <- merge(vdba_data, dataset_variables, by = 'Name')
+
+
+
+# select only the big datasets
+big_volumes_data <- vdba_stuff1 %>% dplyr::filter(!Name %in% maxxed_species)
+
+vdba_stuff1 <- big_volumes_data
 
 vdba_stuff1 <- vdba_stuff1 %>%
   select(ID, threshold, meanVDBA, minVDBA, maxVDBA, Name, LogMass, Frequency, DeviceAttachment) %>%
@@ -255,7 +282,7 @@ p4 <- ggplot(vdba_stuff1_summarised, aes(x = LogMass, y = log10(meanVDBA), shape
   my_theme() 
 p4 
 
-p5 <- ggplot(vdba_stuff1_summarised, aes(x = LogMass, y = log10(maxVDBA), shape = threshold)) +
+p5 <- ggplot(vdba_stuff1_summarised %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(maxVDBA), shape = threshold)) +
   geom_point(aes(colour = Name)) +
   scale_color_manual(values = fave_colours) +
   ggnewscale::new_scale_colour() + # reset the colour scale
@@ -296,31 +323,15 @@ p8 <- ggplot(vdba_stuff2_summarised, aes(x = LogMass, y = log10(maxVDBA), shape 
 p8
 ```
 
+## Find the active minutes per day
+Are large animals more or less active generally?
+```{r}
 
 
-## Curvi-linear trend
-Chris says: "I wonder if you picked only the highest VDBA for each body mass, and used a GAMS model to predict the pattern, would it be hump shaped? with a peak around 50kg? A curvilinear trend might also explain why sometimes we see a positive slope (e.g. with quolls, small size) and a negative slope with kangaroos (large body size)"
-
-```{r echo = FALSE}
-
-# summarise by dataset
-vdba_stuff_max <- vdba_stuff1 %>% group_by(Name, threshold, LogMass) %>%
-   summarise(maxVDBA = max(maxVDBA)) %>%
-  dplyr::filter(threshold == "active")
-
-# Plots ------------------------------------------------------------------------
-p6 <- ggplot(vdba_stuff_max, aes(x = LogMass, y = log10(maxVDBA))) +
-  geom_point(aes(colour = Name)) +
-  scale_color_manual(values = fave_colours) +
-  ggnewscale::new_scale_colour() +  # reset the colour scale
-  geom_smooth(method = "gam", colour = "ivory3", se = FALSE, linewidth = 1.2) +
-  scale_color_manual(values = threshold_cols) +
-  my_theme()
-p6
 
 
-# stats ------------------------------------------------------------------------
-gam_model <- gam(log10(maxVDBA) ~ s(LogMass), data = vdba_stuff_max)
-summary(gam_model)
+
+
+
 
 ```
