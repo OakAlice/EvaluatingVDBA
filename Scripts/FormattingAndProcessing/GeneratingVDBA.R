@@ -18,23 +18,26 @@ accel <- generate_threshold(accel, species, dataset_variables)
 
 # making some diagnostic plots ---------------------------------------------
 # plot the smoothed data and then where the threshold is
-samples <- min(
-  as.numeric(dataset_variables[Name == species]$Frequency) * 60 * 60, nrow(accel)
-)
-accel_sample <- accel[1:samples, ]
-p1 <- ggplot(accel_sample, aes(x = seq(1:nrow(accel_sample)), y = smooth_vdba, colour = threshold, group = 1)) + geom_line()
-p2 <- ggplot(accel_sample, aes(x = smooth_vdba, fill = threshold)) +
-  geom_histogram(alpha = 0.6, position = "identity", bins = 50) +
-  labs(y = "Frequency", fill = "Threshold") +
-  theme_minimal()
-
-ggsave(file.path(base_path, "AccelerometerData", species, "assessing_the_threshold.png"), plot = p1,
-       width = 10, height = 4, dpi = 300)
-ggsave(file.path(base_path, "AccelerometerData", species, "frequency_of_vedba.png"),  plot = p2,
-       width = 10, height = 4, dpi = 300)
+# currently commented out as the images can take a while to generate
+# samples <- min(
+#   as.numeric(dataset_variables[Name == species]$Frequency) * 60 * 60, nrow(accel)
+# )
+# accel_sample <- accel[1:samples, ]
+# p1 <- ggplot(accel_sample, aes(x = seq(1:nrow(accel_sample)), y = smooth_vdba, colour = threshold, group = 1)) + geom_line()
+# p2 <- ggplot(accel_sample, aes(x = smooth_vdba, fill = threshold)) +
+#   geom_histogram(alpha = 0.6, position = "identity", bins = 50) +
+#   labs(y = "Frequency", fill = "Threshold") +
+#   theme_minimal()
+# 
+# ggsave(file.path(base_path, "AccelerometerData", species, "assessing_the_threshold.png"), plot = p1,
+#        width = 10, height = 4, dpi = 300)
+# ggsave(file.path(base_path, "AccelerometerData", species, "frequency_of_vedba.png"),  plot = p2,
+#        width = 10, height = 4, dpi = 300)
 
 # Generate the summary stats ----------------------------------------------
-vedba_stats <- summarise_vdba(accel, is_burst = FALSE) 
+freq <- as.numeric(dataset_variables[Name == species]$Frequency) 
+burst <- as.character(dataset_variables[Name == species]$SamplingStyle)
+vedba_stats <- summarise_vdba(accel, freq, is_burst = burst) 
 
 fwrite(vedba_stats, file.path(base_path, "AccelerometerData", species, 
                                 paste0(species, "_summary.csv")))

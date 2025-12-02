@@ -187,33 +187,47 @@ generate_threshold <- function(accel, species, dataset_variables) {
     mutate(threshold = ifelse(smooth_vdba > 0.05, "active", "inactive"))
 }
 
-summarise_vdba <- function(accel, is_burst = FALSE) {
+summarise_vdba <- function(accel, freq, is_burst = "Continuous") {
+
   
-  if (!"threshold" %in% names(accel)) {
-    stop("No threshold column found. Run generate_threshold() first.")
-  }
-  
-  if (is_burst) {
+  if (is_burst == "Burst") {
     vdba_col <- "mean_vedba"
   } else {
     vdba_col <- "smooth_vdba"
   }
   
-  summary_state <- accel %>%
+  # firstly take the mean of each second
+  # convert the times into seconds
+  # ec=xtract the most common threshold
+  mode <- function(vector) {
+    names(which.max(table(vector)))
+  }
+  seconds <- accel %>%
+    mutate(sample_i = row_number(),
+           second = floor((sample_i - 1) / freq)) %>%
+    group_by(ID, second) %>%
+    summarise(
+      threshold = mode(.data$threshold),
+      seconds_VDBA = mean(.data[[vdba_col]], na.rm = TRUE),
+      .groups = "drop"
+    )
+    
+  # now take a mean across the seconds
+  summary_state <- seconds %>%
     group_by(ID, threshold) %>%
     summarise(
-      meanVDBA = mean(.data[[vdba_col]], na.rm = TRUE),
-      minVDBA  = min(.data[[vdba_col]], na.rm = TRUE),
-      maxVDBA  = max(.data[[vdba_col]], na.rm = TRUE),
+      meanVDBA = mean(.data$seconds_VDBA, na.rm = TRUE),
+      minVDBA  = min(.data$seconds_VDBA, na.rm = TRUE),
+      maxVDBA  = max(.data$seconds_VDBA, na.rm = TRUE),
       .groups = "drop"
     )
   
-  summary_overall <- accel %>%
+  summary_overall <- seconds %>%
     group_by(ID) %>%
     summarise(
-      meanVDBA = mean(.data[[vdba_col]], na.rm = TRUE),
-      minVDBA  = min(.data[[vdba_col]], na.rm = TRUE),
-      maxVDBA  = max(.data[[vdba_col]], na.rm = TRUE),
+      meanVDBA = mean(.data$seconds_VDBA, na.rm = TRUE),
+      minVDBA  = min(.data$seconds_VDBA, na.rm = TRUE),
+      maxVDBA  = max(.data$seconds_VDBA, na.rm = TRUE),
       .groups = "drop"
     ) %>%
     mutate(threshold = "all")

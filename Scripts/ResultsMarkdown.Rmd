@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 pacman::p_load(data.table, tidyverse, lmerTest, ggnewscale, mgcv, patchwork)
 
 base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
-
+ 
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
 maxxed_species <- c("Annett_Bettong", "Neis_Cow", "Pagano_Bear", "Sparkes_Koala", "Vehkaoja_Dog")
@@ -258,26 +258,26 @@ fwrite(vdba_stuff1, file.path(base_path, "Output", "All_summary_data.csv"))
 
 ```
 
-Only datasets with more than 24 hours of data (more likely to capture representative data).
+
 ```{r}
 # select only the big datasets
-all_volumes <- lapply(species_list, function(x){
-  vol <- fread(file.path(x, paste0(basename(x), "_volume.csv")))
-  vol$Species <- basename(x)
-  vol
-})
-all_volumes <- rbindlist(all_volumes)
-big_volumes <- all_volumes[all_volumes$volume > 24, ]
-big_volumes_data <- vdba_stuff1 %>% dplyr::filter(!Name %in% maxxed_species)
-
-vdba_stuff1 <- big_volumes_data
+# all_volumes <- lapply(species_list, function(x){
+#   vol <- fread(file.path(x, paste0(basename(x), "_volume.csv")))
+#   vol$Species <- basename(x)
+#   vol
+# })
+# all_volumes <- rbindlist(all_volumes)
+# big_volumes <- all_volumes[all_volumes$volume > 24, ]
+# big_volumes_data <- vdba_stuff1 %>% dplyr::filter(!Name %in% maxxed_species)
+# 
+# vdba_stuff1 <- big_volumes_data
 
 vdba_stuff1 <- vdba_stuff1 %>%
   select(ID, threshold, meanVDBA, minVDBA, maxVDBA, Name, LogMass, Frequency, DeviceAttachment) %>%
   dplyr::filter(!Name == "Chakravarty_Meerkat")
 
 # summarise by dataset
-vdba_stuff1_summarised <- vdba_stuff1 %>% group_by(Name, threshold, LogMass) %>%
+vdba_stuff1_summarised <- vdba_stuff1 %>% group_by(Name, threshold, LogMass, DeviceAttachment) %>%
    summarise(meanVDBA = mean(meanVDBA),
              maxVDBA = mean(maxVDBA),
              minVDBA = mean(minVDBA)
@@ -325,9 +325,9 @@ p7 <- ggplot(vdba_stuff2_summarised, aes(x = LogMass, y = log10(meanVDBA), shape
   geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
   scale_color_manual(values = threshold_cols) +
   my_theme() + 
-  theme(legend.position = "none")
+  theme(legend.position = "bottom")
 
-p8 <- ggplot(vdba_stuff2_summarised, aes(x = LogMass, y = log10(maxVDBA), shape = threshold)) +
+p8 <- ggplot(vdba_stuff2_summarised %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(maxVDBA), shape = threshold)) +
   geom_point(aes(colour = Name)) +
   scale_color_manual(values = fave_colours) +
   ggnewscale::new_scale_colour() + # reset the colour scale
@@ -336,11 +336,55 @@ p8 <- ggplot(vdba_stuff2_summarised, aes(x = LogMass, y = log10(maxVDBA), shape 
   my_theme()  + 
   theme(legend.position = "none")
 
-p7 + p8
+(p7 + p8)+
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom",
+        legend.box = "horizontal",
+        legend.title = element_text(hjust = 0.5),
+        legend.text = element_text(hjust = 0.5))
 
 all_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Name), data = vdba_stuff2_summarised)
 summary(all_model)
 ```
+
+And then only the sepcies that didnt max and were on a collar.
+```{r}
+vdba_stuff3_summarised <- vdba_stuff1_summarised %>% dplyr::filter(Name %in% range_species & DeviceAttachment == "Collar")
+
+p9 <- ggplot(vdba_stuff3_summarised, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
+  geom_point(aes(colour = Name)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme() + 
+  theme(legend.position = "none")
+
+p10 <- ggplot(vdba_stuff3_summarised %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(maxVDBA), shape = threshold)) +
+  geom_point(aes(colour = Name)) +
+  scale_color_manual(values = fave_colours) +
+  ggnewscale::new_scale_colour() + # reset the colour scale
+  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+  scale_color_manual(values = threshold_cols) +
+  my_theme()  + 
+  theme(legend.position = "bottom")
+
+(p9 + p10) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom",
+        legend.box = "horizontal",
+        legend.title = element_text(hjust = 0.5),
+        legend.text = element_text(hjust = 0.5))
+
+
+all_model <- lmer(log10(meanVDBA) ~ LogMass * threshold + (1 | Name), data = vdba_stuff3_summarised)
+summary(all_model)
+
+
+```
+
+
+
 
 ## Find the active minutes per day
 Are large animals more or less active generally?
