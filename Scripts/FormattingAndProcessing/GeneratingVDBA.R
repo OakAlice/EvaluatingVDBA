@@ -9,12 +9,14 @@ if (file.exists(cleaned_file)){
 
 accel <- generate_vdba(accel, species, dataset_variables)
 
-sampling_style <- dataset_variables[Name == species]$SamplingStyle
-if (sampling_style == "Continuous"){
-  accel <- smooth_vdba(accel, species, dataset_variables, window = 1)
-}
+# have removed the smoothing because I'm already doing a mean so don't need the extra step???
+# sampling_style <- dataset_variables[Name == species]$SamplingStyle
+# if (sampling_style == "Continuous"){
+#   accel <- smooth_vdba(accel, species, dataset_variables, window = 1)
+# }
 
-accel <- generate_threshold(accel, species, dataset_variables)
+# removed threshold because its now calculated more simply inside the summarisation
+# accel <- generate_threshold(accel, species, dataset_variables)
 
 # making some diagnostic plots ---------------------------------------------
 # plot the smoothed data and then where the threshold is
@@ -37,14 +39,14 @@ accel <- generate_threshold(accel, species, dataset_variables)
 # Generate the summary stats ----------------------------------------------
 freq <- as.numeric(dataset_variables[Name == species]$Frequency) 
 burst <- as.character(dataset_variables[Name == species]$SamplingStyle)
-vedba_stats <- summarise_vdba(accel, freq, is_burst = burst) 
+vedba_stats <- summarise_vdba(accel, freq) 
 
-fwrite(vedba_stats, file.path(base_path, "AccelerometerData", species, 
+fwrite(vedba_stats$summary, file.path(base_path, "AccelerometerData", species, 
                                 paste0(species, "_summary.csv")))
 
 # calculating the active minutes per day
 freq <- as.numeric(dataset_variables[Name == species]$Frequency)
-minutes_per_id <- accel %>%
+minutes_per_id <- vedba_stats$accel %>%
   group_by(ID) %>%
   summarise(
     active_min   = (sum(threshold == "active") / freq) / 60,

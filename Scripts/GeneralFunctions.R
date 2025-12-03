@@ -88,6 +88,7 @@ generate_vdba <- function(accel, species, dataset_variables){
     az_dynamic <- accel$Accel.Z - az_static
     
     vedba <- sqrt(ax_dynamic^2 + ay_dynamic^2 + az_dynamic^2)
+    odba <- abs(ax_dynamic) + abs(ay_dynamic) + abs(az_dynamic)
     
   } else { # burst
     
@@ -106,12 +107,11 @@ generate_vdba <- function(accel, species, dataset_variables){
     accel[, az_dynamic := Accel.Z - mean_Z]
     
     vedba <- sqrt(accel$ax_dynamic^2 + accel$ay_dynamic^2 + accel$az_dynamic^2)
-    
-    # window will be the length of the burst
-    win <- accel %>% group_by(burst_id) %>% count() %>% ungroup() %>% summarise(mean = mean(n))
+    odba <- abs(accel$ax_dynamic) + abs(accel$ay_dynamic) + abs(accel$az_dynamic)
   }
   
   accel$vedba <- vedba
+  accel$odba <- odba
   
   return(accel)
 }
@@ -131,6 +131,7 @@ smooth_vdba <- function(accel, species, dataset_variables, window = 1) {
   
   # smooth VeDBA using rolling mean
   accel[, smooth_vdba := frollmean(vedba, n = win, align = "center", fill = NA)]
+  accel[, smooth_odba := frollmean(odba, n = win, align = "center", fill = NA)]
   # accel<- accel %>% select(ID, Time, smooth_vdba) %>% na.omit()
   
   return(accel)
@@ -180,38 +181,24 @@ smooth_vdba <- function(accel, species, dataset_variables, window = 1) {
 #   return(accel)
 # }
 
-# back up version, trialling a new method
-generate_threshold <- function(accel, species, dataset_variables) {
-  accel <- accel %>%
-    na.omit() %>%
-    mutate(threshold = ifelse(smooth_vdba > 0.05, "active", "inactive"))
-}
+summarise_vdba <- function(accel, freq) {
 
-summarise_vdba <- function(accel, freq, is_burst = "Continuous") {
-
-  
-  if (is_burst == "Burst") {
-    vdba_col <- "mean_vedba"
-  } else {
-    vdba_col <- "smooth_vdba"
-  }
-  
   # firstly take the mean of each second
   # convert the times into seconds
-  # ec=xtract the most common threshold
-  mode <- function(vector) {
-    names(which.max(table(vector)))
-  }
   seconds <- accel %>%
     mutate(sample_i = row_number(),
            second = floor((sample_i - 1) / freq)) %>%
     group_by(ID, second) %>%
     summarise(
-      threshold = mode(.data$threshold),
-      seconds_VDBA = mean(.data[[vdba_col]], na.rm = TRUE),
+      seconds_VDBA = mean(.data$vedba, na.rm = TRUE),
+      seconds_ODBA = mean(.data$odba, na.rm = TRUE),
       .groups = "drop"
     )
-    
+  
+  seconds <- seconds %>%
+    na.omit() %>%
+    mutate(threshold = ifelse(seconds_VDBA > 0.05, "active", "inactive"))
+  
   # now take a mean across the seconds
   summary_state <- seconds %>%
     group_by(ID, threshold) %>%
@@ -219,6 +206,9 @@ summarise_vdba <- function(accel, freq, is_burst = "Continuous") {
       meanVDBA = mean(.data$seconds_VDBA, na.rm = TRUE),
       minVDBA  = min(.data$seconds_VDBA, na.rm = TRUE),
       maxVDBA  = max(.data$seconds_VDBA, na.rm = TRUE),
+      meanODBA = mean(.data$seconds_ODBA, na.rm = TRUE),
+      minODBA  = min(.data$seconds_ODBA, na.rm = TRUE),
+      maxODBA  = max(.data$seconds_ODBA, na.rm = TRUE),
       .groups = "drop"
     )
   
@@ -228,10 +218,14 @@ summarise_vdba <- function(accel, freq, is_burst = "Continuous") {
       meanVDBA = mean(.data$seconds_VDBA, na.rm = TRUE),
       minVDBA  = min(.data$seconds_VDBA, na.rm = TRUE),
       maxVDBA  = max(.data$seconds_VDBA, na.rm = TRUE),
+      meanODBA = mean(.data$seconds_ODBA, na.rm = TRUE),
+      minODBA  = min(.data$seconds_ODBA, na.rm = TRUE),
+      maxODBA  = max(.data$seconds_ODBA, na.rm = TRUE),
       .groups = "drop"
     ) %>%
     mutate(threshold = "all")
   
   # Return combined
-  bind_rows(summary_state, summary_overall)
+  return(list(summary = bind_rows(summary_state, summary_overall),
+              accel = seconds))
 }
