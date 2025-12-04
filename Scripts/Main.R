@@ -37,7 +37,7 @@ all_csvs <- list.files(file.path(base_path, "AccelerometerData"),
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 source(file = file.path(base_path, "Scripts", "GeneralFunctions.R")) # general functions
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
-
+# species_list <- species_list[-33] # remove the lynx because it was taking too long
 maxxed_species <- c("Annett_Bettong", "Neis_Cow", "Pagano_Bear",
                     "Sparkes_Koala", "Vehkaoja_Dog")
 
@@ -91,11 +91,7 @@ for (dataset in species_list){
   species <- basename(dataset)
   print(species)
   # Calculating and thresholding  between active and inactive for each species
-  if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
-    print("already summarised")
-  } else {
-    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
-  }
+  source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
 }
 
  ## ANALYSIS #####

@@ -1,5 +1,7 @@
 # making a figure for the paper
 
+
+# Set up ------------------------------------------------------------------
 # packages
 library(data.table)
 library(tidyverse)
@@ -20,15 +22,19 @@ my_theme <- function() {
       axis.text = element_text(size = 20) 
     )
 }
-sample_colours <- c(
-  "firebrick3", "coral",  "goldenrod2",  "khaki2", 
-  "seagreen", "darkcyan", "cornflowerblue", "slateblue2", 
-  "hotpink",  "rosybrown1"
+fave_colours <- c(
+  "firebrick3", "tomato", "coral", "darkorange2", "sienna3", "tan2",
+  "goldenrod2", "lemonchiffon2", "khaki2",
+  "springgreen3", "darkseagreen4", "seagreen", "olivedrab4", "darkcyan", "aquamarine3",
+  "skyblue4", "deepskyblue3", "cornflowerblue", "powderblue", "royalblue4", "slateblue2", "lightslateblue",
+  "purple4", "mediumpurple3", "mediumorchid", "plum", "orchid3", "thistle",
+  "deeppink3", "hotpink", "lightpink1", "rosybrown1",
+  "mistyrose3", "lavenderblush2", "seashell2"
 )
 
+# Figure of Accel Traces and VDBA -----------------------------------------
 # code
 dat <- fread(file.path(base_path, "AccelerometerData", "Smit_Cat", "raw", "Formatted_raw_data.csv"))
-
 
 # extract the sections of data I want to use
 walking <- dat %>% 
@@ -67,8 +73,6 @@ subset$vedba <- sqrt(subset$ax_dynamic^2 + subset$ay_dynamic^2 + subset$az_dynam
 # smooth it
 subset[, smooth_vdba := frollmean(vedba, n = win, align = "center", fill = NA)]
 
-
-
 # plots 
 raw <- ggplot(subset, aes(x = seq_len(nrow(subset)))) +
   geom_line(aes(y = X), colour = "lightcoral", linewidth = 2) +
@@ -97,5 +101,16 @@ vdba <- ggplot(subset, aes(x = seq_len(nrow(subset)))) +
 raw / vdba
 
 
+# Plot showing the different metabolic theories ---------------------------
+met <- fread(file.path(base_path, "MetabolicData", "jane12086-sup-0003-appendixs5.csv"))
+# I added a column for whether there were terrestrial or marine
+mam <- met %>% dplyr::filter(Class == "Mammalia", Habitat == "Terrestrial")
+ggplot(mam, aes(x = log(`M (kg)`), y = log(`FMR (kJ / day)`), colour = Family)) + 
+  xlab("Log Mass (kg)") + ylab("Log FMR (kJ/day)") +
+  geom_point() +
+  scale_colour_manual(values = fave_colours) +
+  geom_smooth(method = "lm", colour = "#505a6d", linewidth = 2) +
+  my_theme() +
+  theme(legend.position = "none")
 
 
