@@ -37,9 +37,6 @@ all_csvs <- list.files(file.path(base_path, "AccelerometerData"),
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 source(file = file.path(base_path, "Scripts", "GeneralFunctions.R")) # general functions
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
-# species_list <- species_list[-33] # remove the lynx because it was taking too long
-maxxed_species <- c("Annett_Bettong", "Neis_Cow", "Pagano_Bear",
-                    "Sparkes_Koala", "Vehkaoja_Dog")
 
 ## EXPERIMENTATION #####
 # Experimenting with Sampling Rate ----------------------------------------
@@ -62,7 +59,7 @@ for (dataset in species_list){
 
   # Filtering ---------------------------------------------------------------
   if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv")))){
-    print("already smoothed")
+    print("already cleaned")
   } else {
     source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "CleanFormattedData.R"))
   }

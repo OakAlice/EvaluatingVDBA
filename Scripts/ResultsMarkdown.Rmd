@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
   fig.height = 6
 )
 
-pacman::p_load(data.table, tidyverse, lmerTest, ggnewscale, mgcv, patchwork)
+pacman::p_load(data.table, tidyverse, lmerTest, ggnewscale, mgcv, patchwork, broom.mixed)
 
 base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
  
@@ -94,6 +94,46 @@ mean_max_plotting <- function(data){
   return(plot)
 }
 
+quick_stats <- function(data){
+  
+  mean_model <- lmer(log(meanVDBA) ~ LogMass * threshold + (1|ID), data = data)
+  mean_res <- broom.mixed::tidy(mean_model, effects = "fixed")
+  mean_results <- mean_res[grep("LogMass", mean_res$term), ]
+  mean_results$sig <- ifelse(mean_results$p.value < 0.05, "sig", "not sig")
+  mean_results$variable <- "mean"
+  
+  max_data <- data %>% dplyr::filter(threshold == "active")
+  max_model <- lmer(log(maxVDBA) ~ LogMass + (1|ID), data = max_data)
+  max_res <- broom.mixed::tidy(max_model, effects = "fixed")
+  max_results <- max_res[grep("LogMass", max_res$term), ]
+  max_results$sig <- ifelse(max_results$p.value < 0.05, "sig", "not sig")
+  max_results$variable <- "max"
+  
+  logmass_results <- rbind(mean_results, max_results)
+  
+  return(logmass_results)
+}
+
+quick_stats2 <- function(data){
+  
+  mean_model <- lm(log(meanVDBA) ~ LogMass * threshold, data = data)
+  mean_res <- broom.mixed::tidy(mean_model, effects = "fixed")
+  mean_results <- mean_res[grep("LogMass", mean_res$term), ]
+  mean_results$sig <- ifelse(mean_results$p.value < 0.05, "sig", "not sig")
+  mean_results$variable <- "mean"
+  
+  max_data <- data %>% dplyr::filter(threshold == "active")
+  max_model <- lm(log(maxVDBA) ~ LogMass, data = max_data)
+  max_res <- broom.mixed::tidy(max_model, effects = "fixed")
+  max_results <- max_res[grep("LogMass", max_res$term), ]
+  max_results$sig <- ifelse(max_results$p.value < 0.05, "sig", "not sig")
+  max_results$variable <- "max"
+  
+  logmass_results <- rbind(mean_results, max_results)
+  
+  return(logmass_results)
+}
+
 ```
 
 ```{r}
@@ -109,7 +149,9 @@ summary_data <- lapply(all_summary_files, function(x){
 summary_data <- rbindlist(summary_data, fill = TRUE)
 
 summary_data <- merge(summary_data, dataset_variables, by = 'Name') %>%
-  dplyr::filter(!Name == "Chakravarty_Meerkat")
+  dplyr::filter(!Name == "Chakravarty_Meerkat") %>%
+  mutate(mean_MSVDBA = meanVDBA / 10^LogMass,
+         max_MSVDBA = maxVDBA / 10^LogMass)
 fwrite(summary_data, file.path(base_path, "Output", "All_summary_data.csv"))
 
 ```
@@ -122,6 +164,8 @@ All species, with approximate/average masses.
 plot1 <- mean_max_plotting(summary_data)
 plot1
 
+stats1 <- quick_stats(summary_data)
+stats1
 ```
 
 ## Only Datasets With Long Data
@@ -141,6 +185,9 @@ long_volumes_data <- summary_data %>% dplyr::filter(Name %in% long_species)
 plot2 <- mean_max_plotting(long_volumes_data)
 plot2
 
+stats2 <- quick_stats(long_volumes_data)
+stats2
+
 ```
 
 ## Collar Data Only
@@ -151,33 +198,45 @@ collar_data <- summary_data %>% dplyr::filter(DeviceAttachment == "Collar")
 plot3 <- mean_max_plotting(collar_data)
 plot3
 
+stats3 <- quick_stats(collar_data)
+stats3
+
 ```
 
 ## Single system analysis
 What is the differences in sampling protocol are throwing it out? Collected only data collected in the same way by the same lab.
 # V1: Clemente
+There were insufficint individuals, so removed ID as an effect and just had a linear model.
 ```{r echo = FALSE}
 Clemente_data <- summary_data %>% dplyr::filter(Device == "Axivity")
 
 plot4 <- mean_max_plotting(Clemente_data)
 plot4
+
+stats4 <- quick_stats2(Clemente_data)
+stats4
 ```
 
 # V2: Buchmann
+Similarly ID was not a random effect here as too few individuals.
 ```{r echo = FALSE}
 buchmann_species <- dataset_variables$Name[str_detect(dataset_variables$Name, "Buchmann") %in% TRUE]
 Buchmann_data <- summary_data %>% dplyr::filter(Name %in% buchmann_species)
 
 plot5 <- mean_max_plotting(Buchmann_data)
 plot5
+
+stats5 <- quick_stats2(Buchmann_data)
+stats5
 ```
 
 ## Specific Masses
 # Pooled
 Maybe the species masses are too vauge... what if we only use the datasets where we know the exact mass?
+Again, just a linear model with no random effect for ID.
 ```{r}
-ind_species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "HarveyCaroll_Pangolin")
-# "Annett_Bettong", "Annett_Possum", "Annett_Glider", "Clemente_Kudu", 
+ind_species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "HarveyCaroll_Pangolin",  "Clemente_Kudu")
+# "Annett_Bettong", "Annett_Possum", "Annett_Glider", 
 
 # Analysis ----------------------------------------------------------------
 ind_summaries <- lapply(ind_species, function(x){
@@ -226,6 +285,9 @@ ind_data <- rbindlist(ind_summaries, fill = TRUE)
     )
 
 plot6
+
+stats6 <- quick_stats2(ind_data)
+stats6
 
 ```
 
@@ -285,15 +347,58 @@ minute_data <- lapply(all_minutes_files, function(x){
 })
 minute_data <- rbindlist(minute_data, fill = TRUE)
 minute_data <- minute_data %>% dplyr::filter(Name %in% long_species)
-minute_data <- merge(summary_data, minute_data, by = c("ID", "Name"))
+merged_data <- merge(summary_data, minute_data, by = c("ID", "Name"))
 
 # plot this
-ggplot(minute_data, aes(x = LogMass, y = prop_active, colour = Name, group = 1)) + 
-  geom_point() + 
-  xlab("Log Mass (g)") + ylab("Proportion of timeseries spent active") +
-  geom_smooth(method = "lm", colour = "ivory3", se = FALSE, linewidth = 1.2) +
-  scale_colour_manual(values = fave_colours) +
+merged_data$prop_active <- 1 - merged_data$prop_rest
+p8total <- ggplot(merged_data, aes(x = LogMass, y = prop_active, colour = Name)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Log Mass (g)") +
+  ylab("Proportion of timeseries active") +
+  scale_color_manual(values = fave_colours) +
   my_theme() +
   theme(legend.position = "bottom")
+
+# average it across the individuals
+plot_data <- merged_data %>%
+  group_by(Name, LogMass) %>%
+  summarise(mean_high = mean(prop_high),
+            mean_med = mean(prop_med),
+            mean_low = mean(prop_low),
+            mean_rest = mean(prop_rest))
+
+# rotate it to allow all the activity levels
+plot_data <- plot_data %>%
+  pivot_longer(cols = c(mean_high, mean_med, mean_low, mean_rest),
+               names_to = "activity",
+               values_to = "prop")
+plot_data$activity <- factor(plot_data$activity, levels = c("mean_high", "mean_med", "mean_low", "mean_rest"))
+
+p8props <- ggplot(plot_data,  aes(x = LogMass, y = prop, colour = activity)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Log Mass (g)") +
+  ylab("Proportion of timeseries per activity level") +
+  scale_colour_manual(values = c("mean_high" = "lightcoral",
+                               "mean_med" = "tan2",
+                               "mean_low" = "lightcyan3",
+                               "mean_rest" = "ivory3")) +
+  my_theme() +
+  theme(legend.position = "bottom")
+
+plot8 <- (p8total + p8props) +
+    plot_layout(guides = "collect") &
+    theme(
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      legend.title = element_text(size = 10),
+      legend.text  = element_text(size = 10),
+      legend.key.size = unit(0.4, "lines"),
+      legend.spacing.x = unit(0.3, "cm"),
+      legend.spacing.y = unit(0.2, "cm")
+    )
+
+plot8
 
 ```

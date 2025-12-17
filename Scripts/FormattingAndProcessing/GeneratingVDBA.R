@@ -56,15 +56,15 @@ if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species
 # Active minutes ----------------------------------------------------------
 # calculating the active minutes per day
 # Define cut points for active levels (this will be relative to the species)
-fread(file.path(base_path, "AccelerometerData", species, 
+accel <- fread(file.path(base_path, "AccelerometerData", species, 
                                     paste0(species, "_processed.csv")))
-vedba_stats$accel <- vedba_stats$accel %>%
+accel <- accel %>%
   mutate(
     activity_level = case_when(
       threshold == "inactive"                                       ~ "inactive",
-      seconds_VDBA > 0.75 * max(vedba_stats$accel$seconds_VDBA)     ~ "high",
-      seconds_VDBA > 0.5 *  max(vedba_stats$accel$seconds_VDBA)     ~ "medium",
-      seconds_VDBA > 0.05 * max(vedba_stats$accel$seconds_VDBA)     ~ "low",
+      seconds_VDBA > 0.75 * max(accel$seconds_VDBA)     ~ "high",
+      seconds_VDBA > 0.5 *  max(accel$seconds_VDBA)     ~ "medium",
+      seconds_VDBA > 0.05 * max(accel$seconds_VDBA)     ~ "low",
       TRUE                    ~ "low"
     )
   )
@@ -73,7 +73,7 @@ vedba_stats$accel <- vedba_stats$accel %>%
 freq <- as.numeric(dataset_variables[Name == species]$Frequency)
 
 # Summaries
-minutes_per_id <- vedba_stats$accel %>%
+minutes_per_id <- accel %>%
   group_by(ID) %>%
   summarise(
     total_min = n() / freq / 60,
