@@ -19,6 +19,8 @@ knitr::opts_chunk$set(
 pacman::p_load(data.table, tidyverse, lmerTest, ggnewscale, mgcv, patchwork, broom.mixed)
 
 base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
+
+window_seconds <- 1 # redefine that here
  
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
@@ -109,7 +111,13 @@ quick_stats <- function(data){
   max_results$sig <- ifelse(max_results$p.value < 0.05, "sig", "not sig")
   max_results$variable <- "max"
   
-  logmass_results <- rbind(mean_results, max_results)
+  int_model <- lmer(log(meanInt) ~ LogMass * threshold + (1|ID), data = data)
+  int_res <- broom.mixed::tidy(int_model, effects = "fixed")
+  int_results <- int_res[grep("LogMass", int_res$term), ]
+  int_results$sig <- ifelse(int_results$p.value < 0.05, "sig", "not sig")
+  int_results$variable <- "int"
+  
+  logmass_results <- rbind(mean_results, max_results, int_results)
   
   return(logmass_results)
 }
@@ -136,35 +144,113 @@ quick_stats2 <- function(data){
 
 ```
 
+
 ```{r}
 # Prepare the data -------------------------------------------------------------
-all_summary_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "*_summary\\.csv$", full.names = TRUE)
-
-summary_data <- lapply(all_summary_files, function(x){
+# and for the 5 as well
+summary_files5 <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "5_summary\\.csv$", full.names = TRUE)
+summary_data5 <- lapply(summary_files5, function(x){
   dat <- fread(x) %>% na.omit()
   dat$ID <- as.character(dat$ID)
   dat$Name <- basename(dirname(x))
   dat
 })
-summary_data <- rbindlist(summary_data, fill = TRUE)
-
-summary_data <- merge(summary_data, dataset_variables, by = 'Name') %>%
+summary_data5 <- rbindlist(summary_data5, fill = TRUE)
+summary_data5 <- merge(summary_data5, dataset_variables, by = 'Name') %>%
   dplyr::filter(!Name == "Chakravarty_Meerkat") %>%
   mutate(mean_MSVDBA = meanVDBA / 10^LogMass,
          max_MSVDBA = maxVDBA / 10^LogMass)
-fwrite(summary_data, file.path(base_path, "Output", "All_summary_data.csv"))
+fwrite(summary_data5, file.path(base_path, "Output", paste0("All_5_summary_data.csv")))
+
+# and the shorter windows
+# this will include the 1 and 3 second windows 
+summary_files1 <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "_summary\\.csv$", full.names = TRUE)
+summary_files1 <- setdiff(summary_files1, summary_files5)
+
+summary_data1 <- lapply(summary_files1, function(x){
+  dat <- fread(x) %>% na.omit()
+  dat$ID <- as.character(dat$ID)
+  dat$Name <- basename(dirname(x))
+  dat
+})
+summary_data1 <- rbindlist(summary_data1, fill = TRUE)
+
+summary_data1 <- merge(summary_data1, dataset_variables, by = 'Name') %>%
+  dplyr::filter(!Name == "Chakravarty_Meerkat") %>%
+  mutate(mean_MSVDBA = meanVDBA / 10^LogMass,
+         max_MSVDBA = maxVDBA / 10^LogMass)
+fwrite(summary_data1, file.path(base_path, "Output", paste0("All_1_summary_data.csv")))
 
 ```
+# Comapre 5 seconds and 1 second windows 
+To demonstarte that these are interchangable and results not affected by the length of the window
 
+```{r fig.width = 13, fig.height = 8}
+# now can compare them
+win1 <- ggplot(summary_data1, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
+    geom_point(aes(colour = Name)) +
+    xlab("Log mass (g)") + ylab("Log mean VDBA \n over 1 sec (g)") +
+    scale_color_manual(values = fave_colours) +
+    ggnewscale::new_scale_colour() + # reset the colour scale
+    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+    scale_color_manual(values = threshold_cols) +
+    my_theme() +
+    theme(legend.position = "none")
+
+win1.1 <- ggplot(summary_data1, aes(x = LogMass, y = log10(meanInt), shape = threshold)) +
+    geom_point(aes(colour = Name)) +
+    xlab("Log mass (g)") + ylab("Log mean integral VDBA \n over 1 sec (g)") +
+    scale_color_manual(values = fave_colours) +
+    ggnewscale::new_scale_colour() + # reset the colour scale
+    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+    scale_color_manual(values = threshold_cols) +
+    my_theme() +
+    theme(legend.position = "none")
+
+win5 <- ggplot(summary_data5, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
+    geom_point(aes(colour = Name)) +
+    xlab("Log mass (g)") + ylab("Log mean VDBA \n over 5 sec (g)") +
+    scale_color_manual(values = fave_colours) +
+    ggnewscale::new_scale_colour() + # reset the colour scale
+    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+    scale_color_manual(values = threshold_cols) +
+    my_theme() +
+    theme(legend.position = "none")
+
+win5.1 <- ggplot(summary_data5, aes(x = LogMass, y = log10(meanInt), shape = threshold)) +
+    geom_point(aes(colour = Name)) +
+    labs(x = "Log mass (g)", y = "Log mean integral VDBA \n over 5 sec (g)") +
+    scale_color_manual(values = fave_colours) +
+    ggnewscale::new_scale_colour() + # reset the colour scale
+    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+    scale_color_manual(values = threshold_cols) +
+    my_theme() +
+    theme(legend.position = "none")
+
+plotX <- ((win1 | win5) / (win1.1 | win5.1)) +
+    plot_layout(guides = "collect") &
+    theme(
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      legend.title = element_text(size = 10),
+      legend.text  = element_text(size = 10),
+      legend.key.size = unit(0.4, "lines"),
+      legend.spacing.x = unit(0.3, "cm"),
+      legend.spacing.y = unit(0.2, "cm")
+    )
+
+plotX
+
+```
 
 ## All species pooled
 All species, with approximate/average masses. 
 ```{r, echo = FALSE}
 # Plots ------------------------------------------------------------------------
-plot1 <- mean_max_plotting(summary_data)
+plot1 <- mean_max_plotting(summary_data1)
 plot1
 
-stats1 <- quick_stats(summary_data)
+stats1 <- quick_stats(summary_data1)
 stats1
 ```
 
@@ -180,10 +266,20 @@ all_volumes <- lapply(species_list, function(x){
 all_volumes <- rbindlist(all_volumes)
 long_volumes <- all_volumes[all_volumes$volume > 12, ]
 long_species <- unique(long_volumes$Species)
-long_volumes_data <- summary_data %>% dplyr::filter(Name %in% long_species)
+long_volumes_data <- summary_data1 %>% dplyr::filter(Name %in% long_species)
 
 plot2 <- mean_max_plotting(long_volumes_data)
 plot2
+
+ggplot(long_volumes_data, aes(x = LogMass, y = log10(meanInt), shape = threshold)) +
+    geom_point(aes(colour = Name)) +
+    xlab("Log mass (g)") + ylab("Log mean integral VDBA (g)") +
+    scale_color_manual(values = fave_colours) +
+    ggnewscale::new_scale_colour() + # reset the colour scale
+    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+    scale_color_manual(values = threshold_cols) +
+    my_theme() +
+    theme(legend.position = "none")
 
 stats2 <- quick_stats(long_volumes_data)
 stats2
@@ -193,10 +289,20 @@ stats2
 ## Collar Data Only
 And then only the sepcies that were on a collar.
 ```{r}
-collar_data <- summary_data %>% dplyr::filter(DeviceAttachment == "Collar")
+collar_data <- summary_data1 %>% dplyr::filter(DeviceAttachment == "Collar")
 
 plot3 <- mean_max_plotting(collar_data)
 plot3
+
+ggplot(collar_data, aes(x = LogMass, y = log10(meanInt), shape = threshold)) +
+    geom_point(aes(colour = Name)) +
+    xlab("Log mass (g)") + ylab("Log mean integral VDBA (g)") +
+    scale_color_manual(values = fave_colours) +
+    ggnewscale::new_scale_colour() + # reset the colour scale
+    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+    scale_color_manual(values = threshold_cols) +
+    my_theme() +
+    theme(legend.position = "none")
 
 stats3 <- quick_stats(collar_data)
 stats3
@@ -208,10 +314,20 @@ What is the differences in sampling protocol are throwing it out? Collected only
 # V1: Clemente
 There were insufficint individuals, so removed ID as an effect and just had a linear model.
 ```{r echo = FALSE}
-Clemente_data <- summary_data %>% dplyr::filter(Device == "Axivity")
+Clemente_data <- summary_data1 %>% dplyr::filter(Device == "Axivity")
 
 plot4 <- mean_max_plotting(Clemente_data)
 plot4
+
+ggplot(Clemente_data, aes(x = LogMass, y = log10(meanInt), shape = threshold)) +
+    geom_point(aes(colour = Name)) +
+    xlab("Log mass (g)") + ylab("Log mean integral VDBA (g)") +
+    scale_color_manual(values = fave_colours) +
+    ggnewscale::new_scale_colour() + # reset the colour scale
+    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+    scale_color_manual(values = threshold_cols) +
+    my_theme() +
+    theme(legend.position = "none")
 
 stats4 <- quick_stats2(Clemente_data)
 stats4
@@ -221,10 +337,20 @@ stats4
 Similarly ID was not a random effect here as too few individuals.
 ```{r echo = FALSE}
 buchmann_species <- dataset_variables$Name[str_detect(dataset_variables$Name, "Buchmann") %in% TRUE]
-Buchmann_data <- summary_data %>% dplyr::filter(Name %in% buchmann_species)
+Buchmann_data <- summary_data1 %>% dplyr::filter(Name %in% buchmann_species)
 
 plot5 <- mean_max_plotting(Buchmann_data)
 plot5
+
+ggplot(Buchmann_data, aes(x = LogMass, y = log10(meanInt), shape = threshold)) +
+    geom_point(aes(colour = Name)) +
+    xlab("Log mass (g)") + ylab("Log mean integral VDBA (g)") +
+    scale_color_manual(values = fave_colours) +
+    ggnewscale::new_scale_colour() + # reset the colour scale
+    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+    scale_color_manual(values = threshold_cols) +
+    my_theme() +
+    theme(legend.position = "none")
 
 stats5 <- quick_stats2(Buchmann_data)
 stats5
@@ -242,7 +368,7 @@ ind_species <- c("Annett_Kangaroo", "Clemente_Impala", "Gaschk_Quoll", "HarveyCa
 ind_summaries <- lapply(ind_species, function(x){
   weights <- fread(file.path(base_path, "Mass_of_individuals", paste0(x, ".csv"))) %>%
     mutate(ID = as.character(ID))
-  summary <- fread(file.path(base_path, "AccelerometerData", x, paste0(x, "_summary.csv"))) %>%
+  summary <- fread(file.path(base_path, "AccelerometerData", x, paste0(x, "_", window_seconds, "_summary.csv"))) %>%
     mutate(Dataset = x,
            ID = as.character(ID))
   dat <- merge(summary, weights, by = "ID")
@@ -285,6 +411,16 @@ ind_data <- rbindlist(ind_summaries, fill = TRUE)
     )
 
 plot6
+
+ggplot(ind_data, aes(x = LogMass, y = log10(meanInt), shape = threshold)) +
+    geom_point(aes(colour = Name)) +
+    xlab("Log mass (g)") + ylab("Log mean integral VDBA (g)") +
+    scale_color_manual(values = fave_colours) +
+    ggnewscale::new_scale_colour() + # reset the colour scale
+    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
+    scale_color_manual(values = threshold_cols) +
+    my_theme() +
+    theme(legend.position = "none")
 
 stats6 <- quick_stats2(ind_data)
 stats6
@@ -347,7 +483,7 @@ minute_data <- lapply(all_minutes_files, function(x){
 })
 minute_data <- rbindlist(minute_data, fill = TRUE)
 minute_data <- minute_data %>% dplyr::filter(Name %in% long_species)
-merged_data <- merge(summary_data, minute_data, by = c("ID", "Name"))
+merged_data <- merge(summary_data1, minute_data, by = c("ID", "Name"))
 
 # plot this
 merged_data$prop_active <- 1 - merged_data$prop_rest

@@ -66,7 +66,7 @@ reformat_clemente_data <- function(x){
 
 
 # vdba generation ---------------------------------------------------------
-generate_vdba <- function(accel, species, dataset_variables){
+generate_vdba <- function(accel, species, dataset_variables, window_seconds){
   
   sampling_style <- dataset_variables[Name == species]$SamplingStyle
   # freq <- as.numeric(dataset_variables[Name == species]$Frequency) # I've now set it to be 10 for all
@@ -75,7 +75,7 @@ generate_vdba <- function(accel, species, dataset_variables){
     
     freq <- as.numeric(dataset_variables[Name == species]$Frequency)
     if (is.na(freq)) stop("Frequency missing for species: ", species)
-    win <- 2 * freq  # smoothing window
+    win <- window_seconds * freq  # smoothing window
     
     # calculate the static accelerations
     ax_static <- frollmean(accel$Accel.X, n = win, align = "center", fill = NA)
@@ -117,15 +117,10 @@ generate_vdba <- function(accel, species, dataset_variables){
 }
 
 # smooth it out based on a rolling window
-smooth_vdba <- function(accel, species, dataset_variables, window = 1) {
+smooth_vdba <- function(accel, species, dataset_variables, window = 5) {
   
   freq <- as.numeric(dataset_variables[Name == species]$Frequency)
   if (is.na(freq)) stop("Frequency missing for species: ", species)
-  
-  window <- 2
-  if (freq < 10){
-    window <- 5
-  } 
   
   win <- window * freq
   
@@ -181,19 +176,28 @@ smooth_vdba <- function(accel, species, dataset_variables, window = 1) {
 #   return(accel)
 # }
 
-summarise_vdba <- function(accel, freq) {
+summarise_vdba <- function(accel, freq, window_seconds) {
 
   # firstly take the mean of each second
-  # convert the times into seconds
+  # convert the times into bins of the defined window length
   seconds <- accel %>%
-    mutate(sample_i = row_number(),
-           second = floor((sample_i - 1) / freq)) %>%
-    group_by(ID, second) %>%
+    group_by(ID) %>%
+    mutate(
+      sample_i = row_number(),
+      window = floor((sample_i - 1) / (window_seconds * freq))
+    ) %>%
+    group_by(ID, window) %>%
     summarise(
-      seconds_VDBA = mean(.data$vedba, na.rm = TRUE),
-      seconds_ODBA = mean(.data$odba, na.rm = TRUE),
+      seconds_VDBA = mean(vedba, na.rm = TRUE),
+      seconds_ODBA = mean(odba, na.rm = TRUE),
+      int_VDBA = { # take the trapezoidal integration
+        v <- vedba[!is.na(vedba)]
+        if (length(v) < 2) NA_real_
+        else (sum(v) - 0.5 * (v[1] + v[length(v)])) / freq
+      },
       .groups = "drop"
     )
+  
   
   seconds <- seconds %>%
     na.omit() %>%
@@ -206,9 +210,9 @@ summarise_vdba <- function(accel, freq) {
       meanVDBA = mean(.data$seconds_VDBA, na.rm = TRUE),
       minVDBA  = min(.data$seconds_VDBA, na.rm = TRUE),
       maxVDBA  = max(.data$seconds_VDBA, na.rm = TRUE),
-      meanODBA = mean(.data$seconds_ODBA, na.rm = TRUE),
-      minODBA  = min(.data$seconds_ODBA, na.rm = TRUE),
-      maxODBA  = max(.data$seconds_ODBA, na.rm = TRUE),
+      meanInt = mean(.data$int_VDBA, na.rm = TRUE),
+      minInt  = min(.data$int_VDBA, na.rm = TRUE),
+      maxInt  = max(.data$int_VDBA, na.rm = TRUE),
       .groups = "drop"
     )
   
@@ -218,9 +222,9 @@ summarise_vdba <- function(accel, freq) {
       meanVDBA = mean(.data$seconds_VDBA, na.rm = TRUE),
       minVDBA  = min(.data$seconds_VDBA, na.rm = TRUE),
       maxVDBA  = max(.data$seconds_VDBA, na.rm = TRUE),
-      meanODBA = mean(.data$seconds_ODBA, na.rm = TRUE),
-      minODBA  = min(.data$seconds_ODBA, na.rm = TRUE),
-      maxODBA  = max(.data$seconds_ODBA, na.rm = TRUE),
+      meanInt = mean(.data$int_VDBA, na.rm = TRUE),
+      minInt  = min(.data$int_VDBA, na.rm = TRUE),
+      maxInt  = max(.data$int_VDBA, na.rm = TRUE),
       .groups = "drop"
     ) %>%
     mutate(threshold = "all")

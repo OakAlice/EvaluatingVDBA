@@ -1,7 +1,7 @@
 # Finding the active / inactive threshold for each dataset ----------------
 
 # load in the data
-data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_processed.csv")))
+data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_", window_seconds, "_processed.csv")))
 
 # ggplot(data, aes(x = vedba))+
 #    geom_freqpoly() +
@@ -44,4 +44,4 @@ overall_summary$threshold <- "all"
 vedba_stats <- rbind(summary, overall_summary)
 
 # save the summary
-fwrite(vedba_stats, file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))
+fwrite(vedba_stats, file.path(base_path, "AccelerometerData", species, paste0(species, "_", window_seconds, "_summary.csv")))

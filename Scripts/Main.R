@@ -29,9 +29,7 @@ all_csvs <- list.files(file.path(base_path, "AccelerometerData"),
                        pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
 # Keep only the raw data or individual analysis
 # summary_csvs <- grep("summary", all_csvs, value = TRUE)
-# # keep_csvs <- c(raw_csvs, ind_csvs)
-# to_delete <- summary_csvs
-# file.remove(to_delete)
+# file.remove(summary_csvs)
 
 # Variables #####
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
@@ -58,11 +56,11 @@ for (dataset in species_list){
   }
 
   # Filtering ---------------------------------------------------------------
-  if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv")))){
-    print("already cleaned")
-  } else {
-    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "CleanFormattedData.R"))
-  }
+  # if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_smoothed.csv")))){
+  #   print("already cleaned")
+  # } else {
+  #   source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "CleanFormattedData.R"))
+  # }
 }
 
 # Generating summary of the data ------------------------------------------
@@ -87,6 +85,12 @@ for (dataset in species_list){
 for (dataset in species_list){
   species <- basename(dataset)
   print(species)
+  
+  window_seconds <- 1 # TODO: Define the window length
+  if (as.numeric(dataset_variables[Name == species]$Frequency) == 1){
+    window_seconds <- 3
+  }
+  
   # Calculating and thresholding  between active and inactive for each species
   source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
 }

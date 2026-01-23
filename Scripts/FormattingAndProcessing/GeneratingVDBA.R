@@ -1,5 +1,5 @@
 # generate the vdba and summary -------------------------------------------
-if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_summary.csv")))){
+if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_", window_seconds, "_summary.csv")))){
   print("already summarised")
 } else {
   cleaned_file <- file.path(base_path, "AccelerometerData", species, paste0(species, "_cleaned_reformatted.csv"))
@@ -9,12 +9,12 @@ if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species
     accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
   }
   
-  accel <- generate_vdba(accel, species, dataset_variables)
+  accel <- generate_vdba(accel, species, dataset_variables, window_seconds)
   
   # have removed the smoothing because I'm already doing a mean so don't need the extra step???
   # sampling_style <- dataset_variables[Name == species]$SamplingStyle
   # if (sampling_style == "Continuous"){
-  #   accel <- smooth_vdba(accel, species, dataset_variables, window = 1)
+  #   accel <- smooth_vdba(accel, species, dataset_variables, window = 5)
   # }
   
   # removed threshold because its now calculated more simply inside the summarisation
@@ -41,13 +41,13 @@ if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species
   # Generate the summary stats ----------------------------------------------
   freq <- as.numeric(dataset_variables[Name == species]$Frequency) 
   burst <- as.character(dataset_variables[Name == species]$SamplingStyle)
-  vedba_stats <- summarise_vdba(accel, freq) 
+  vedba_stats <- summarise_vdba(accel, freq, window_seconds) 
   
   fwrite(vedba_stats$summary, file.path(base_path, "AccelerometerData", species, 
-                                  paste0(species, "_summary.csv")))
+                                  paste0(species, "_", window_seconds, "_summary.csv")))
   
   fwrite(vedba_stats$accel, file.path(base_path, "AccelerometerData", species, 
-                                        paste0(species, "_processed.csv")))
+                                        paste0(species, "_", window_seconds, "_processed.csv")))
   
 }
 
@@ -57,11 +57,11 @@ if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species
 # calculating the active minutes per day
 # Define cut points for active levels (this will be relative to the species)
 accel <- fread(file.path(base_path, "AccelerometerData", species, 
-                                    paste0(species, "_processed.csv")))
+                                    paste0(species, "_", window_seconds, "_processed.csv")))
 accel <- accel %>%
   mutate(
     activity_level = case_when(
-      threshold == "inactive"                                       ~ "inactive",
+      threshold == "inactive"                           ~ "inactive",
       seconds_VDBA > 0.75 * max(accel$seconds_VDBA)     ~ "high",
       seconds_VDBA > 0.5 *  max(accel$seconds_VDBA)     ~ "medium",
       seconds_VDBA > 0.05 * max(accel$seconds_VDBA)     ~ "low",
@@ -76,7 +76,7 @@ freq <- as.numeric(dataset_variables[Name == species]$Frequency)
 minutes_per_id <- accel %>%
   group_by(ID) %>%
   summarise(
-    total_min = n() / freq / 60,
+    total_min = n() / freq / ifelse(window_seconds == 1, 60, 12), # split into minutes based on window length
     high_min  = sum(activity_level == "high")    / freq / 60,
     med_min   = sum(activity_level == "medium")  / freq / 60,
     low_min   = sum(activity_level == "low")     / freq / 60,
@@ -87,5 +87,5 @@ minutes_per_id <- accel %>%
     prop_rest = rest_min / total_min
   )
 
-fwrite(minutes_per_id, file.path(base_path, "AccelerometerData", species, paste0(species, "_active_minutes.csv")))
+fwrite(minutes_per_id, file.path(base_path, "AccelerometerData", species, paste0(species, "_", window_seconds, "_active_minutes.csv")))
 
