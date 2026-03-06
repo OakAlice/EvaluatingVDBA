@@ -1,24 +1,21 @@
-# Checking the goat data --------------------------------------------------
+# Checking for outliers --------------------------------------------------
 
+if (species == "Clemente_Impala" | species == "Annett_Kangaroo"){
+    
+  accel <- fread(file.path(base_path, "AccelerometerData", species, 
+                           paste0(species, "_", window_seconds, "_processed.csv")))
+  
+  # remove outliers
+  accel <- accel %>%
+    dplyr::filter(seconds_VDBA < 2)
+  
+  
+  ggplot(accel, aes(x = seconds_VDBA, fill = species)) + 
+    geom_histogram(binwidth = 0.1) +
+    scale_fill_manual(values = fave_colours) +
+    my_theme() +
+    theme(legend.position = "none")
+  
 
-species <- "Dickinson_Goat"
-
-data <- fread(file.path(base_path, "AccelerometerData", species, "raw", dataset_dictionary[[species]]))
-
-data <- data %>%
-  mutate(NewTime = as.POSIXct(paste(Date, Time))) %>%
-  select(NewTime, Accx, Accy, Accz, Behaviour, ID) %>%
-  rename(Time = NewTime,
-         Accel.X = Accx,
-         Accel.Y = Accy,
-         Accel.Z = Accz,
-         Activity = Behaviour,
-         ID = ID)
-
-data_subset <- data #[1:1000000]
-
-
-ggplot(data_subset, aes(x = seq(1:nrow(data_subset)), y = Accel.X)) + geom_line()
-
-
-
+  
+}

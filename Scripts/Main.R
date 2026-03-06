@@ -69,18 +69,6 @@ for (dataset in species_list){
   source(file = file.path(base_path, "Scripts", "DatasetCharacteristics.R"))
 }
 
-# Filtering outliers and downsampling to standard rate --------------------
-# standard_sampling_rate <- 10
-# if (file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_resampled.csv")))){
-#   print("already resampled")
-# } else {
-#   source(file = file.path(base_path, "Scripts", "DownsamplingFormattedData.R"))
-# }
-
-# Determining which ones were measured in Gs ------------------------------
-# source(file = file.path(base_path, "Scripts", "DeterminingCalibration.R"))
-# commented this out as I removed all the ones not in Gs
-
 # Generating VBDA ---------------------------------------------------------
 for (dataset in species_list){
   species <- basename(dataset)
@@ -93,6 +81,9 @@ for (dataset in species_list){
   
   # Calculating and thresholding  between active and inactive for each species
   source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
+  
+  # removing any outliers
+  source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "CheckingOutliers.R"))
 }
 
  ## ANALYSIS #####

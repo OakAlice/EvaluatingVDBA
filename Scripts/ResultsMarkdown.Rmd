@@ -538,3 +538,42 @@ plot8 <- (p8total + p8props) +
 plot8
 
 ```
+
+## Understanding the distribution of activity
+Does the distibution of high and low VDBA differ with size?
+
+```{r}
+# load in all the vdba data
+all_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "_1_processed.csv", full.names = TRUE)
+all_data <- lapply(all_files, function(x){
+  dat <- fread(x)
+  dat$Species <- basename(dirname(x))
+  
+  dat
+})
+all_data <- rbindlist(all_data)
+
+# order the data based on animal size
+species <- dataset_variables %>% 
+  dplyr::filter(Type == "Mam", Zone == "Land") %>%
+  arrange(LogMass) %>%
+  pull(Name)
+all_data$Species <- factor(all_data$Species, levels = species)
+
+# only include datasets with more than 10 hours (10 * 60 * 60)
+selected_data <- all_data %>%
+  group_by(Species) %>%
+  dplyr::filter(n() > 5 * 60 * 60) %>% # 5 hours worth of data
+  ungroup()
+
+# now plot the distributions
+ggplot(selected_data, aes(x = seconds_VDBA, fill = Species)) + 
+  geom_histogram(aes(y = after_stat(density)), binwidth = 0.01) +
+  scale_fill_manual(values = fave_colours) +
+  scale_x_continuous(limits = c(-5, 1)) +
+  my_theme() +
+  theme(legend.position = "none") +
+  facet_wrap(~Species) #, scales = "free_y")
+
+```
+
