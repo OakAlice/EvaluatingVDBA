@@ -1,7 +1,7 @@
 # EvaluatingVDBA
-Fire of Life submission.
-
 Bio-logging accelerometers are frequently used to estimate energetic output (metabolic cost) of animal movement as the vectorial sum of all axes (VDBA). While this metric has conclusively been found to correlate temporally with metabolic rate within individuals, how VDBA scales between individuals of differing body mass and across species of different sizes, has not been measured. In this analysis, we attempt to understand the link between animal body mass and energy output as captured by VDBA.
+
+![Graphical Abstract](Manuscript/Figures/GraphicalAbstract.png)
 
 ## Method
 - 36 species datasets of raw tri-axial accelerometer data.
