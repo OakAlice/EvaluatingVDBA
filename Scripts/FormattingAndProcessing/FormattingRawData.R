@@ -94,19 +94,12 @@ if (species == "Wanja_Fox"){
   
 }  else if (species == "Sparkes_Koala"){
   # only select the first 100 files from each individual
-  all_files <- list.files(file.path(base_path, "AccelerometerData/Sparkes_Koala", "raw"),
-                          recursive = TRUE, full.names = TRUE)
-  dfs <- lapply(all_files, function(x){
-    dat <- fread(x)
-    dat <- dat[, 2:5]
-    colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
-    dat$Time <- as.POSIXct((dat$Time - 719529)*86400, origin = "1970-01-01", tz = "UTC")
-    dat$ID <- str_split(tools::file_path_sans_ext(basename(x)), "_")[[1]][1]
-    dat <- dat[1:(nrow(dat)/4), ]
-    dat
-  })
-  data <- rbindlist(dfs)
-  rm(dfs)
+  dat <- fread("C:/Users/PC/Documents/EvaluatingVDBA/AccelerometerData/Sparkes_Koala/raw/labelled_data.csv")
+  dat <- dat[, c(1:4, 8)]
+  colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z", "ID")
+
+  data <- dat
+  
 
 } else if (species %in% c("Annett_Possum", "DiCicco_Perentie", "Galea_Cat", 
                           "Annett_Bettong", "Annett_Wallaby")){
@@ -153,7 +146,7 @@ if (species == "Wanja_Fox"){
                           } else if(species == "Studd_Squirrel"){ "Studd_Squirrel_reformatted.csv"
                           } else if (species == "Clemente_Echidna"){ "Clemente_Echidna_reformatted.csv"
                           } else if (species == "HarveyCaroll_Pangolin"){"HarveyCaroll_Pangolin_reformatted.csv"
-                          } else if (species == "Vehkaoja_Dog"){"Formatted_raw_data.csv"}
+                          } else if (species == "Vehkaoja_Dog"){"Vehkaoja_Dog_reformatted"}
   ))
   data <- data %>%
     rename(Accel.X = X,
@@ -297,6 +290,14 @@ if (species == "Wanja_Fox"){
            Accel.X = Int_aX,
            Accel.Y = Int_aY,
            Accel.Z = Int_aZ)
+  
+  # convery from mps2 to Gs
+  data[, `:=`(
+    Accel.X = Accel.X / 9.80665,
+    Accel.Y = Accel.Y / 9.80665,
+    Accel.Z = Accel.Z / 9.80665
+  )]
+  
 
 } else if (species == "Studd_Lynx"){
   files <- list.files(file.path(base_path, "AccelerometerData", "Studd_Lynx", "raw"), full.names = TRUE)
@@ -374,7 +375,7 @@ if (species == "Wanja_Fox"){
   data <- rbindlist(data)
   
 } else if (species == "Neis_Cow"){
-  files <- list.files(file.path(base_path, "AccelerometerData", "Neis_Cow", "raw", "immu"), full.names = TRUE, recursive = TRUE)
+  files <- list.files(file.path(base_path, "AccelerometerData", "Neis_Cow", "raw"), full.names = TRUE, recursive = TRUE)
   data <- lapply(files, function(x){
     df <- fread(x) %>%
       rename(Time = timestamp,
@@ -382,7 +383,7 @@ if (species == "Wanja_Fox"){
              Accel.Y = accel_y_mps2,
              Accel.Z = accel_z_mps2) %>%
       select(Time, Accel.X, Accel.Y, Accel.Z) %>%
-      mutate(ID = basename(dirname(x)))
+      mutate(ID = basename(x))
     
     # convery from mps2 to Gs
     df[, `:=`(
@@ -435,6 +436,30 @@ if (species == "Wanja_Fox"){
     colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
     dat$ID <- str_split(basename(x), "_")[[1]][2]
     dat <- dat[1:(nrow(dat)/4),]
+    dat
+  })
+  data <- rbindlist(data)
+  
+} else if (species == "Annett_Bettong"){
+  files <- list.files(file.path(base_path, "AccelerometerData", "Annett_Bettong", "raw"), full.names = TRUE)
+  data <- lapply(files, function(x){
+    dat <- fread(x)
+    dat <- dat[, 1:4]
+    colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
+    dat$ID <- str_split(basename(x), "_", simplify = TRUE)[1]
+    dat
+  })
+  data <- rbindlist(data)
+  
+} else if (species == "HARTH_Human"){
+  files <- list.files(file.path(base_path, "AccelerometerData", "HARTH_Human", "raw"), full.names = TRUE)
+  data <- lapply(files, function(x){
+    dat <- fread(x)
+    dat <- dat[, 1:4]
+    colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
+    dat <- dat %>%
+      mutate(Accel.X = as.numeric(Accel.X))
+    dat$ID <- tools::file_path_sans_ext(basename(x))
     dat
   })
   data <- rbindlist(data)

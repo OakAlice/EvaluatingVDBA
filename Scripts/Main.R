@@ -12,21 +12,23 @@ p_load(tidyverse,
        future,
        RcppRoll,
        arrow,
+       plotly,
        zoo,
        R.matlab,
        rhdf5,
        ctmm,
        signal,
        lmerTest,
-       mgcv
+       mgcv,
+       glmmTMB
        )
 
 # base_path <- "C:/Users/oaw001/OneDrive - University of the Sunshine Coast/EvaluatingVDBA"
 base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 
 # clear the system
-all_csvs <- list.files(file.path(base_path, "AccelerometerData"),
-                       pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
+# all_csvs <- list.files(file.path(base_path, "AccelerometerData"),
+#                        pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
 # Keep only the raw data or individual analysis
 # summary_csvs <- grep("summary", all_csvs, value = TRUE)
 # file.remove(summary_csvs)
@@ -74,20 +76,22 @@ for (dataset in species_list){
   species <- basename(dataset)
   print(species)
   
-  window_seconds <- 1 # TODO: Define the window length
-  if (as.numeric(dataset_variables[Name == species]$Frequency) == 1){
-    window_seconds <- 3
-  }
+  window_seconds <- 5 # TODO: Define the window length
+  # if (as.numeric(dataset_variables[Name == species]$Frequency) == 1){
+  #   window_seconds <- 3
+  # }
   
   # Calculating and thresholding  between active and inactive for each species
   source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
-  
-  # removing any outliers
-  source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "CheckingOutliers.R"))
+
 }
 
- ## ANALYSIS #####
+## ANALYSIS #####
 # Scaling -----------------------------------------------------------------
 # understanding these results
 source(file = file.path(base_path, "Scripts", "ResultsMarkdown.Rmd"))
 
+
+## HUMAN SIMULATION #####
+# Adding the data from the human simulations ------------------------------
+source(file = file.path(base_path, "Scripts", "SimulationData.Rmd"))
