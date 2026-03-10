@@ -35,7 +35,7 @@ base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 
 # Variables #####
 dataset_variables <- fread(file.path(base_path, "Dataset_Variables.csv"))
-source(file = file.path(base_path, "Scripts", "GeneralFunctions.R")) # general functions
+source(file = file.path(base_path, "Scripts", "FreeRoamingAnalysis/GeneralFunctions.R")) # general functions
 species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
 
 ## EXPERIMENTATION #####
@@ -54,7 +54,7 @@ for (dataset in species_list){
   if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))){
     print("already refomatted")
   } else {
-    source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "FormattingRawData.R"))
+    source(file = file.path(base_path, "Scripts", "FreeRoamingAnalysis", "FormattingAndProcessing", "FormattingRawData.R"))
   }
 
   # Filtering ---------------------------------------------------------------
@@ -68,7 +68,7 @@ for (dataset in species_list){
 # Generating summary of the data ------------------------------------------
 for (dataset in species_list){
   species <- basename(dataset)
-  source(file = file.path(base_path, "Scripts", "DatasetCharacteristics.R"))
+  source(file = file.path(base_path, "Scripts", "FreeRoamingAnalysis", "DatasetCharacteristics.R"))
 }
 
 # Generating VBDA ---------------------------------------------------------
@@ -82,16 +82,12 @@ for (dataset in species_list){
   # }
   
   # Calculating and thresholding  between active and inactive for each species
-  source(file = file.path(base_path, "Scripts", "FormattingAndProcessing", "GeneratingVDBA.R"))
+  source(file = file.path(base_path, "Scripts","FreeRoamingAnalysis", "FormattingAndProcessing", "GeneratingVDBA.R"))
 
 }
 
 ## ANALYSIS #####
 # Scaling -----------------------------------------------------------------
 # understanding these results
-source(file = file.path(base_path, "Scripts", "ResultsMarkdown.Rmd"))
+source(file = file.path(base_path, "Scripts","FreeRoamingAnalysis", "ResultsMarkdown.Rmd"))
 
-
-## HUMAN SIMULATION #####
-# Adding the data from the human simulations ------------------------------
-source(file = file.path(base_path, "Scripts", "SimulationData.Rmd"))

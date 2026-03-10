@@ -1,5 +1,5 @@
 # Simulation Data ---------------------------------------------------------
-
+base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
 # load in the data 
 data <- fread(file.path(base_path, "Human_Simulation", "VDBA_output.csv")) %>%
   select(-file, -V1)
@@ -27,3 +27,11 @@ max <- ggplot(sum_data, aes(x = logmass)) +
   theme(legend.position = "none")
 
 mean + max
+
+
+# Stats -------------------------------------------------------------------
+mean_model <- glmmTMB(logmean ~ logmass, data = sum_data)
+summary(mean_model)
+
+max_model <- glmmTMB(logmax ~ logmass, data = sum_data)
+summary(max_model)
