@@ -76,18 +76,17 @@ for (dataset in species_list){
   species <- basename(dataset)
   print(species)
   
-  window_seconds <- 5 # TODO: Define the window length
-  # if (as.numeric(dataset_variables[Name == species]$Frequency) == 1){
-  #   window_seconds <- 3
-  # }
+  window_seconds <- 1 # TODO: Define the window length
+  if (as.numeric(dataset_variables[Name == species]$Frequency) == 1){
+    window_seconds <- 3
+  }
   
   # Calculating and thresholding  between active and inactive for each species
   source(file = file.path(base_path, "Scripts","FreeRoamingAnalysis", "FormattingAndProcessing", "GeneratingVDBA.R"))
-
 }
 
 ## ANALYSIS #####
 # Scaling -----------------------------------------------------------------
 # understanding these results
 source(file = file.path(base_path, "Scripts","FreeRoamingAnalysis", "ResultsMarkdown.Rmd"))
-
+source(file = file.path(base_path, "Scripts","FreeRoamingAnalysis", "ResultsForDave.R"))

@@ -1,0 +1,121 @@
+Dataset,Name,ID,Mass (g),LogMass
+Annett_Kangaroo,Sleepy Dave,Sleey_Dave_Collar10,58.65,4.77
+Annett_Kangaroo,Windy,Windy_collar9,45.6,4.66
+Annett_Kangaroo,Lola,Lola_Collar15,25.2,4.4
+Annett_Kangaroo,Romeo,Romeo_Collar14,53,4.72
+Annett_Kangaroo,Gramps,Gramps_collar2,55.8,4.75
+Annett_Kangaroo,Gully Rat,Gully_Rat_Collar6,37.8,4.58
+Annett_Kangaroo,Munchies,Munchies_Collar5,27.9,4.45
+Annett_Kangaroo,Big Cahuna,Big_Cahuna_Collar3,50.4,4.7
+Clemente_Impala,,1,57.67,4.76
+Clemente_Impala,,2,63.87,4.81
+Clemente_Impala,,3,42.07,4.62
+Clemente_Impala,,4,57.97,4.76
+Clemente_Impala,,5,53.47,4.73
+Clemente_Impala,,6,64.27,4.81
+Clemente_Impala,,7,34.47,4.54
+Clemente_Impala,,8,53.17,4.73
+Clemente_Impala,,10,27.45,4.44
+Clemente_Impala,,11,60.57,4.78
+Clemente_Impala,,12,32.87,4.52
+Clemente_Impala,,14,45.47,4.66
+Clemente_Impala,,15,46.87,4.67
+Clemente_Kudu,,6017913_0000000000,180000,5.26
+Gaschk_Quoll,cayless,Cayless,428,2.63
+Gaschk_Quoll,disgrace,Disgrace,390,2.59
+Gaschk_Quoll,grapes,Grapes,411,2.61
+Gaschk_Quoll,klemmer,Klemmer,647,2.81
+Gaschk_Quoll,maloney,Maloney,471,2.67
+Gaschk_Quoll,moimoi,Moimoi,662,2.82
+Gaschk_Quoll,moon,Moon,460,2.66
+Gaschk_Quoll,shillington,Shillington,566,2.75
+Gaschk_Quoll,shillington,Shillington2,566,2.75
+Gaschk_Quoll,shoeshow,Snowshoe,617,2.79
+Gaschk_Quoll,sphynx,Sphynx,342,2.53
+Gaschk_Quoll,tedesco,Tedesco,535,2.73
+Gaschk_Quoll,wolfram,Wolfram,384,2.58
+HarveyCaroll_Pangolin,1. Chaminuka,champ,12000,4.08
+HarveyCaroll_Pangolin,2. Sindisiwe,cindy1,4600,3.66
+HarveyCaroll_Pangolin,2. Sindisiwe,cindy2,4600,3.66
+HarveyCaroll_Pangolin,3. Dakarai,dakari,7100,3.85
+HarveyCaroll_Pangolin,4. Impi,impi1,8750,3.94
+HarveyCaroll_Pangolin,4. Impi,impi2,8750,3.94
+HarveyCaroll_Pangolin,4. Impi,impi3,8750,3.94
+HarveyCaroll_Pangolin,5. Yakachena,yakachena1,4500,3.65
+HarveyCaroll_Pangolin,5. Yakachena,yakachena2,4500,3.65
+HarveyCaroll_Pangolin,6. Shura,shura,13990,4.15
+Mauny_Goat,21038,21038,38800,4.588831726
+Mauny_Goat,21055,21055,48900,4.689308859
+Mauny_Goat,21066,21066,60700,4.783188691
+Mauny_Goat,21083,21083,47500,4.67669361
+Mauny_Goat,21091,21091,44400,4.64738297
+Mauny_Goat,21101,21101,45500,4.658011397
+Mauny_Goat,21118,21118,46000,4.662757832
+Mauny_Goat,21119,21119,46800,4.670245853
+Pagano_Bear,1,1,288,5.46
+Pagano_Bear,2,2,212,5.33
+Pagano_Bear,3,3,237,5.37
+Pagano_Bear,4,4,126,5.1
+Pagano_Bear,5,5,126,5.1
+Pagano_Bear,6,6,173,5.24
+Pagano_Bear,7,7,176,5.25
+Pagano_Bear,8,8,199,5.3
+Pagano_Bear,9,9,172,5.24
+Pagano_Bear,10,10,141,5.15
+Pagano_Bear,11,11,186,5.27
+Pagano_Bear,12,12,140,5.15
+Sparkes_Koala,Nicole,Nicole,3985,3.6
+Sparkes_Koala,Angelina,Angelina,5610,3.75
+Sparkes_Koala,Marilyn,Marilyn,6230,3.79
+Sparkes_Koala,Ferrell,Ferrell,6980,3.84
+Sparkes_Koala,Holland,Holland,7110,3.85
+Sparkes_Koala,Murray,Murray,7345,3.87
+Sparkes_Koala,Anne,Anne,7355,3.87
+Sparkes_Koala,Hardy,Hardy,7405,3.87
+Sparkes_Koala,Chadwick,Chadwick,7900,3.9
+Sparkes_Koala,Dwayne,Dwayne,8500,3.93
+Vehkaoja_Dog,16,16,13000,4.11
+Vehkaoja_Dog,18,18,29000,4.46
+Vehkaoja_Dog,19,19,30000,4.48
+Vehkaoja_Dog,20,20,15000,4.18
+Vehkaoja_Dog,21,21,39000,4.59
+Vehkaoja_Dog,22,22,35000,4.54
+Vehkaoja_Dog,23,23,23000,4.36
+Vehkaoja_Dog,25,25,26000,4.41
+Vehkaoja_Dog,26,26,20000,4.3
+Vehkaoja_Dog,27,27,16000,4.2
+Vehkaoja_Dog,28,28,28000,4.45
+Vehkaoja_Dog,29,29,13000,4.11
+Vehkaoja_Dog,30,30,17000,4.23
+Vehkaoja_Dog,33,33,23000,4.36
+Vehkaoja_Dog,34,34,18000,4.26
+Vehkaoja_Dog,36,36,20000,4.3
+Vehkaoja_Dog,39,39,15000,4.18
+Vehkaoja_Dog,41,41,25000,4.4
+Vehkaoja_Dog,43,43,14000,4.15
+Vehkaoja_Dog,44,44,19000,4.28
+Vehkaoja_Dog,45,45,22000,4.34
+Vehkaoja_Dog,46,46,20000,4.3
+Vehkaoja_Dog,47,47,22000,4.34
+Vehkaoja_Dog,48,48,30000,4.48
+Vehkaoja_Dog,49,49,25000,4.4
+Vehkaoja_Dog,51,51,25000,4.4
+Vehkaoja_Dog,52,52,25000,4.4
+Vehkaoja_Dog,53,53,35000,4.54
+Vehkaoja_Dog,54,54,18000,4.26
+Vehkaoja_Dog,55,55,25000,4.4
+Vehkaoja_Dog,56,56,20000,4.3
+Vehkaoja_Dog,57,57,28000,4.45
+Vehkaoja_Dog,58,58,28000,4.45
+Vehkaoja_Dog,59,59,16000,4.2
+Vehkaoja_Dog,60,60,31000,4.49
+Vehkaoja_Dog,61,61,41000,4.61
+Vehkaoja_Dog,63,63,37000,4.57
+Vehkaoja_Dog,65,65,20000,4.3
+Vehkaoja_Dog,66,66,23000,4.36
+Vehkaoja_Dog,67,67,28000,4.45
+Vehkaoja_Dog,68,68,28000,4.45
+Vehkaoja_Dog,70,70,20000,4.3
+Vehkaoja_Dog,72,72,30000,4.48
+Vehkaoja_Dog,73,73,23000,4.36
+Vehkaoja_Dog,74,74,32000,4.51
