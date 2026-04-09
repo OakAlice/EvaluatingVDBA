@@ -55,7 +55,7 @@ fave_colours <- c(
 # summary_data <- merge(summary_data, minute_data, by = c("ID", "Name"))
 
 # exclude some datasets
-summary_data <- summary_data %>% dplyr::filter(!Name == "HARTH_Human")
+# summary_data <- summary_data %>% dplyr::filter(!Name == "HARTH_Human")
 
 # save that
 # fwrite(summary_data, file.path(base_path, "All_summarised_data.csv"))
@@ -239,29 +239,18 @@ summary(simple_max_model)
 # Hypothesis, there will be a significant difference in how big vs small animals behave
 # with larger animals spending less time in high activity
 
-
-# find the minutes per day that the animals are active
-# plot this
-summary_data$prop_active <- 1 - summary_data$prop_rest
-# this is somewhat arbitrary because I chose the threshold between active and inactive
-ggplot(long_data, aes(x = LogMass, y = prop_active, colour = Name)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  xlab("Log Mass (g)") +
-  ylab("Proportion of timeseries active") +
-  scale_color_manual(values = fave_colours) +
-  my_theme() +
-  theme(legend.position = "bottom")
-
-
 # Understanding the distribution of activity
+# NOTE: all_data was too big to upload in entirity so I just uploaded a very small sample of it
+
 
 # only include datasets with more than 5 hours
-selected_data <- all_data %>%
-  group_by(Name) %>%
-  dplyr::filter(n() > 5 * 60 * 60) %>% # 5 hours worth of data
-  ungroup() %>%
-  dplyr::filter(!Name %in% c("HARTH_Human", "Vehkaoja_Dog", "Mauny_Goat"))
+# selected_data <- all_data %>%
+#   group_by(Name) %>%
+#   dplyr::filter(n() > 5 * 60 * 60) %>% # 5 hours worth of data
+#   ungroup() %>%
+#   dplyr::filter(!Name %in% c("HARTH_Human", "Vehkaoja_Dog", "Mauny_Goat"))
+
+selected_data <- fread(file.path(base_path, "Selected_windows_data.csv"))
 
 # now plot the distributions
 ggplot(selected_data, aes(x = log10(seconds_VDBA), fill = Name)) + 
