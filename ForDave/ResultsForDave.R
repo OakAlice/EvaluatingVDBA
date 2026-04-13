@@ -1,15 +1,17 @@
 
 # Set up ------------------------------------------------------------------
-pacman::p_load(data.table, tidyverse, lmerTest, ggnewscale, mgcv, patchwork, broom.mixed)
+pacman::p_load(data.table, 
+               tidyverse, 
+               glmmTMB, 
+               ggnewscale, 
+               mgcv, 
+               patchwork, 
+               broom.mixed)
 
-base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
-
-window_seconds <- 1 # redefine that here
-
+base_path <- "C:/Users/PC/Documents/EvaluatingVDBA/ForDave"
 dataset_variables <- read_csv(file.path(base_path, "Dataset_Variables.csv"), col_select = c(Name, Species, LogMass, Device, DeviceAttachment), show_col_types  = FALSE)
-
-species_list <- list.dirs(file.path(base_path, "AccelerometerData"), recursive = FALSE)
-
+all_volumes <- fread(file.path(base_path, "volumes.csv"))
+ind_weight <- fread(file.path(base_path, "Individual_Weights.csv")) %>% select(Dataset, ID, LogMass) %>% rename(Name = Dataset, IndLogMass = LogMass)
 
 # Functions and themes ----------------------------------------------------
 my_theme <- function() {
@@ -36,328 +38,138 @@ fave_colours <- c(
   "mistyrose3", "lavenderblush2", "seashell2"
 )
 
-threshold_cols <- c(
-  active   = "lightcoral", 
-  all = "lightcyan3"
-)
-
-# plot functions
-mean_max_plotting <- function(data){
-  
-  p1mean <- ggplot(data, aes(x = LogMass, y = log10(SpeciesMean), shape = threshold)) +
-    geom_point(aes(colour = Name), size = 4) +
-    xlab("Log mass (g)") + ylab("Log mean VDBA (g)") +
-    scale_color_manual(values = fave_colours) +
-    ggnewscale::new_scale_colour() + # reset the colour scale
-    geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
-    scale_color_manual(values = threshold_cols) +
-    my_theme() +
-    theme(legend.position = "none")
-  
-  p1max <- ggplot(data %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(SpeciesMeanMax))) +
-    geom_point(aes(colour = Name), size = 4) +
-    xlab("Log mass (g)") + ylab("Log max VDBA (g)") +
-    scale_color_manual(values = fave_colours) +
-    ggnewscale::new_scale_colour() +
-    geom_smooth(method = "lm", colour = "lightcoral", se = FALSE, linewidth = 1.2) +
-    scale_color_manual(values = threshold_cols) +
-    my_theme() +
-    theme(legend.position = "none")
-  
-  plot <- (p1mean + p1max) +
-    plot_layout(guides = "collect") &
-    theme(
-      legend.position = "bottom",
-      legend.box = "horizontal",
-      legend.title = element_text(size = 10),
-      legend.text  = element_text(size = 10),
-      legend.key.size = unit(0.4, "lines"),
-      legend.spacing.x = unit(0.3, "cm"),
-      legend.spacing.y = unit(0.2, "cm")
-    )
-  
-  return(plot)
-}
-
-quick_stats <- function(data){
-  
-  mean_model <- glmmTMB(log(meanVDBA) ~ LogMass * threshold + (1|ID), data = data)
-  mean_res <- broom.mixed::tidy(mean_model, effects = "fixed")
-  mean_results <- mean_res[grep("LogMass", mean_res$term), ]
-  mean_results$sig <- ifelse(mean_results$p.value < 0.05, "sig", "not sig")
-  mean_results$variable <- "mean"
-  
-  max_data <- data %>% dplyr::filter(threshold == "active")
-  max_model <- glmmTMB(log(maxVDBA) ~ LogMass + (1|ID), data = max_data)
-  max_res <- broom.mixed::tidy(max_model, effects = "fixed")
-  max_results <- max_res[grep("LogMass", max_res$term), ]
-  max_results$sig <- ifelse(max_results$p.value < 0.05, "sig", "not sig")
-  max_results$variable <- "max"
-  
-  logmass_results <- rbind(mean_results, max_results)
-  
-  return(logmass_results)
-}
-
-quick_stats2 <- function(data){
-  
-  mean_model <- lm(log(SpeciesMean) ~ LogMass * threshold, data = data)
-  mean_res <- broom.mixed::tidy(mean_model, effects = "fixed")
-  mean_results <- mean_res[grep("LogMass", mean_res$term), ]
-  mean_results$sig <- ifelse(mean_results$p.value < 0.05, "sig", "not sig")
-  mean_results$variable <- "mean"
-  
-  max_data <- data %>% dplyr::filter(threshold == "active")
-  max_model <- lm(log(SpeciesMeanMax) ~ LogMass, data = max_data)
-  max_res <- broom.mixed::tidy(max_model, effects = "fixed")
-  max_results <- max_res[grep("LogMass", max_res$term), ]
-  max_results$sig <- ifelse(max_results$p.value < 0.05, "sig", "not sig")
-  max_results$variable <- "max"
-  
-  logmass_results <- rbind(mean_results, max_results)
-  
-  return(logmass_results)
-}
-
 # Make a summary of the data ----------------------------------------------
-# take all the individually processed datasets and put them together
-summary_files1 <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "1_summary\\.csv$", full.names = TRUE)
-summary_files3 <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "3_summary\\.csv$", full.names = TRUE)
-summary_files <- c(summary_files1, summary_files3)
+# took all the individually processed datasets and put them together and then summarised:
 
-summary_data <- lapply(summary_files, function(x){
-  dat <- fread(x) %>% na.omit()
-  dat$ID <- as.character(dat$ID)
-  dat$Name <- basename(dirname(x))
-  dat
-})
-summary_data <- rbindlist(summary_data, fill = TRUE)
+# all_data <- fread(file.path(base_path, "All_windows_data.csv")) %>% rename(Name = Species)
+# ind_summary_data <- all_data %>%
+#   group_by(Name, ID, threshold) %>%
+#   summarise(IndMean = mean(seconds_VDBA), IndMax = max(seconds_VDBA))
+# summary_data <- ind_summary_data %>%
+#   group_by(Name, threshold) %>%
+#   summarise(SpeciesMean = mean(IndMean), SpeciesMeanMax = max(IndMax))
+# summary_data <- merge(ind_summary_data, summary_data, by = c("Name", "threshold"))
+# summary_data <- merge(summary_data, dataset_variables, by = "Name")
+# now add in the active minutes
+# minute_data <- file.path(base_path, "Active_time_data.csv")
+# summary_data <- merge(summary_data, minute_data, by = c("ID", "Name"))
 
-summary_data <- merge(summary_data, dataset_variables, by = 'Name') %>%
-  dplyr::filter(!Name == "HARTH_Human") %>%
-  mutate(mean_MSVDBA = meanVDBA / 10^LogMass,
-         max_MSVDBA = maxVDBA / 10^LogMass) %>%
-  dplyr::filter(threshold != "inactive") %>%
-  group_by(Name, threshold) %>%
-  mutate(SpeciesMean = mean(meanVDBA), SpeciesMeanMax = mean(maxVDBA))
-fwrite(summary_data1, file.path(base_path, "Output", paste0("All_1_summary_data.csv")))
+# exclude some datasets
+# summary_data <- summary_data %>% dplyr::filter(!Name == "HARTH_Human")
 
+# save that
+# fwrite(summary_data, file.path(base_path, "All_summarised_data.csv"))
+summary_data <- fread(file.path(base_path, "All_summarised_data.csv"))
 
-# Compare 5 seconds and 1 second windows 
-To demonstarte that these are interchangable and results not affected by the length of the window
+# make some subsets
+buchmann_species <- dataset_variables$Name[str_detect(dataset_variables$Name, "Buchmann") %in% TRUE]
+Buchmann_data <- summary_data %>% dplyr::filter(Name %in% buchmann_species)
+active_data <- summary_data %>% dplyr::filter(!Name %in% c(buchmann_species, "Vehkaoja_Dog"))
 
-
-# now can compare them
-win1 <- ggplot(summary_data1, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
-  geom_point(aes(colour = Name)) +
-  xlab("Log mass (g)") + ylab("Log mean VDBA \n over 1 sec (g)") +
-  scale_color_manual(values = fave_colours) +
-  ggnewscale::new_scale_colour() + # reset the colour scale
-  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
-  scale_color_manual(values = threshold_cols) +
-  my_theme() +
-  theme(legend.position = "none")
-
-win1.1 <- ggplot(summary_data1, aes(x = LogMass, y = log10(meanInt), shape = threshold)) +
-  geom_point(aes(colour = Name)) +
-  xlab("Log mass (g)") + ylab("Log mean integral VDBA \n over 1 sec (g)") +
-  scale_color_manual(values = fave_colours) +
-  ggnewscale::new_scale_colour() + # reset the colour scale
-  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
-  scale_color_manual(values = threshold_cols) +
-  my_theme() +
-  theme(legend.position = "none")
-
-win5 <- ggplot(summary_data5, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
-  geom_point(aes(colour = Name)) +
-  xlab("Log mass (g)") + ylab("Log mean VDBA \n over 5 sec (g)") +
-  scale_color_manual(values = fave_colours) +
-  ggnewscale::new_scale_colour() + # reset the colour scale
-  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
-  scale_color_manual(values = threshold_cols) +
-  my_theme() +
-  theme(legend.position = "none")
-
-win5.1 <- ggplot(summary_data5, aes(x = LogMass, y = log10(meanInt), shape = threshold)) +
-  geom_point(aes(colour = Name)) +
-  labs(x = "Log mass (g)", y = "Log mean integral VDBA \n over 5 sec (g)") +
-  scale_color_manual(values = fave_colours) +
-  ggnewscale::new_scale_colour() + # reset the colour scale
-  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
-  scale_color_manual(values = threshold_cols) +
-  my_theme() +
-  theme(legend.position = "none")
-
-plotX <- ((win1 | win5) / (win1.1 | win5.1) + plot_layout(guides = "collect")) &
-  theme(
-    legend.position = "bottom",
-    legend.box = "horizontal",
-    legend.title = element_text(size = 15),
-    legend.text  = element_text(size = 15),
-    legend.key.size = unit(0.4, "lines"),
-    legend.spacing.x = unit(0.3, "cm"),
-    legend.spacing.y = unit(0.2, "cm")
-  )
-
-plotX
-
-
-
-## All species pooled
-All species, with approximate/average masses. 
-{r, echo = FALSE}
-# Plots ------------------------------------------------------------------------
-plot1 <- mean_max_plotting(summary_data1)
-plot1
-
-stats1 <- quick_stats(summary_data1)
-stats1
-
-
-
-## Only Datasets With Long Data
-Maybe some of the small datasets are skewing it... Exclude datasets that had less than 24 hrs worth of data.
-
-# select only the big datasets
-all_volumes <- lapply(species_list, function(x){
-  vol <- fread(file.path(x, paste0(basename(x), "_volume.csv")))
-  vol$Species <- basename(x)
-  vol
-})
-all_volumes <- rbindlist(all_volumes)
 long_volumes <- all_volumes[all_volumes$volume > 12, ]
 long_species <- unique(long_volumes$Species)
-long_volumes_data <- summary_data1 %>% dplyr::filter(Name %in% long_species)
+long_data <- summary_data %>% dplyr::filter(Name %in% long_species)
 
-plot2 <- mean_max_plotting(long_volumes_data)
-plot2
+# Part One: Averages vs body mass ----------------------------------------------
+# Hypothesis: There will be a significant effect of Body mass on mean and max VDBA
 
-stats2 <- quick_stats(long_volumes_data)
-stats2
+## Plots ####
+### All thd data ####
+pmean <- ggplot() +
+  geom_point(data = active_data %>% dplyr::filter(threshold == "active"), 
+             aes(x = LogMass, y = log10(SpeciesMean), colour = Name), size = 4) +
+  scale_colour_manual(values = fave_colours) +
+  
+  ggnewscale::new_scale_colour() +  # reset colour scale for the lines
+  
+  geom_smooth(data = active_data  %>% dplyr::filter(threshold == "active"), 
+              aes(x = LogMass, y = log10(SpeciesMean), colour = "All datasets"),
+              method = "lm", se = FALSE, linewidth = 1.2) +
+  geom_smooth(data = long_data %>% dplyr::filter(threshold == "active"), 
+              aes(x = LogMass, y = log10(SpeciesMean), colour = "Long datasets"),
+              method = "lm", se = FALSE, linewidth = 1.2) +
+  geom_smooth(data = active_data %>% dplyr::filter(threshold == "active",
+                                                   DeviceAttachment == "Collar"), 
+              aes(x = LogMass, y = log10(SpeciesMean), colour = "Collar datasets"),
+              method = "lm", se = FALSE, linewidth = 1.2) +
+  scale_colour_manual(
+    values = c(
+      "All datasets"           = "firebrick3",
+      "Long datasets"          = "goldenrod2", 
+      "Collar datasets"        = "springgreen3"
+    )
+  ) +
+  labs(x = "Log Mass (grams)", y = "Dataset Mean VDBA (G)") +
+  my_theme()
 
-
-
-## Collar Data Only
-And then only the sepcies that were on a collar.
-
-collar_data <- summary_data1 %>% dplyr::filter(DeviceAttachment == "Collar")
-
-plot3 <- mean_max_plotting(collar_data)
-plot3
-
-stats3 <- quick_stats(collar_data)
-stats3
-
-
-
-## Single system analysis
-What is the differences in sampling protocol are throwing it out? Collected only data collected in the same way by the same lab.
-# V1: Clemente
-There were insufficint individuals, so removed ID as an effect and just had a linear model.
-{r echo = FALSE}
-Clemente_data <- summary_data1 %>% dplyr::filter(Device == "Axivity")
-
-plot4 <- mean_max_plotting(Clemente_data)
-plot4
-
-stats4 <- quick_stats2(Clemente_data)
-stats4
-
-
-# V2: Buchmann
-Similarly ID was not a random effect here as too few individuals.
-{r echo = FALSE}
-buchmann_species <- dataset_variables$Name[str_detect(dataset_variables$Name, "Buchmann") %in% TRUE]
-Buchmann_data <- summary_data1 %>% dplyr::filter(Name %in% buchmann_species)
-
-plot5 <- mean_max_plotting(Buchmann_data)
-plot5
-
-stats5 <- quick_stats2(Buchmann_data)
-stats5
-
-
-## Specific Masses
-# Pooled
-Maybe the species masses are too vauge... what if we only use the datasets where we know the exact mass?
-  Again, just a linear model with no random effect for ID.
-
-ind_species <- c("Annett_Kangaroo", "Clemente_Impala", "Clemente_Kudu", "Gaschk_Quoll", "HarveyCaroll_Pangolin",  "Mauny_Goat", "Pagano_Bear", "Sparkes_Koala", "Vehkaoja_Dog")
-
-# Analysis ----------------------------------------------------------------
-ind_summaries <- lapply(ind_species, function(x){
-  weights <- fread(file.path(base_path, "Mass_of_individuals", paste0(x, ".csv"))) %>%
-    mutate(ID = as.character(ID))
-  summary <- fread(file.path(base_path, "AccelerometerData", x, paste0(x, "_", window_seconds, "_summary.csv"))) %>%
-    mutate(Dataset = x,
-           ID = as.character(ID))
-  dat <- merge(summary, weights, by = "ID")
-  dat
-})
-
-ind_data <- rbindlist(ind_summaries, fill = TRUE) %>%
-  dplyr::filter(threshold != "inactive")
-
-# Plots ------------------------------------------------------------------------------
-p6mean <- ggplot(ind_data, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
-  geom_point(aes(colour = Dataset), size = 4) +
-  xlab("Log mass (g)") + ylab("Log mean VDBA (g)") +
-  scale_color_manual(values = fave_colours) +
-  ggnewscale::new_scale_colour() + # reset the colour scale
-  geom_smooth(method = "lm", aes(colour = threshold), se = FALSE, linewidth = 1.2) +
-  scale_color_manual(values = threshold_cols) +
-  my_theme() +
-  theme(legend.position = "none")
-
-p6max <- ggplot(ind_data %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(maxVDBA))) +
-  geom_point(aes(colour = Dataset), size = 4) +
-  xlab("Log mass (g)") + ylab("Log max VDBA (g)") +
-  scale_color_manual(values = fave_colours) +
-  ggnewscale::new_scale_colour() +
-  geom_smooth(method = "lm", colour = "lightcoral", se = FALSE, linewidth = 1.2) +
-  scale_color_manual(values = threshold_cols) +
-  my_theme() +
-  theme(legend.position = "none")
-
-plot6 <- (p6mean + p6max + plot_layout(guides = "collect")) &
+pmax <- ggplot() +
+  geom_point(data = active_data %>% dplyr::filter(threshold == "active"), 
+             aes(x = LogMass, y = log10(SpeciesMeanMax), colour = Name), size = 4) +
+  scale_colour_manual(values = fave_colours) +
+  
+  ggnewscale::new_scale_colour() +  # reset colour scale for the lines
+  
+  geom_smooth(data = active_data %>% dplyr::filter(threshold == "active"), 
+              aes(x = LogMass, y = log10(SpeciesMeanMax), colour = "All datasets"),
+              method = "lm", se = FALSE, linewidth = 1.2) +
+  geom_smooth(data = long_data %>% dplyr::filter(threshold == "active"), 
+              aes(x = LogMass, y = log10(SpeciesMeanMax), colour = "Long datasets"),
+              method = "lm", se = FALSE, linewidth = 1.2) +
+  geom_smooth(data = active_data %>% dplyr::filter(threshold == "active",
+                                                   DeviceAttachment == "Collar"), 
+              aes(x = LogMass, y = log10(SpeciesMeanMax), colour = "Collar datasets"),
+              method = "lm", se = FALSE, linewidth = 1.2) +
+  scale_colour_manual(
+    values = c(
+      "All datasets"           = "firebrick3",
+      "Long datasets"          = "goldenrod2", 
+      "Collar datasets"        = "springgreen3"
+    )
+  ) +
+  labs(x = "Log Mass (grams)", y = "Dataset Mean Max VDBA (G)") +
+  my_theme()
+  
+(pmean + pmax) +
+  plot_layout(guides = "collect") &
   theme(
     legend.position = "bottom",
     legend.box = "horizontal",
-    legend.title = element_text(size = 15),
-    legend.text  = element_text(size = 15),
+    legend.title = element_text(size = 10),
+    legend.text  = element_text(size = 10),
     legend.key.size = unit(0.4, "lines"),
     legend.spacing.x = unit(0.3, "cm"),
     legend.spacing.y = unit(0.2, "cm")
   )
-plot6
 
-mean_model <- lm(log(meanVDBA) ~ LogMass * threshold, data = data)
-mean_res <- broom.mixed::tidy(mean_model, effects = "fixed")
-mean_results <- mean_res[grep("LogMass", mean_res$term), ]
-mean_results$sig <- ifelse(mean_results$p.value < 0.05, "sig", "not sig")
-mean_results$variable <- "mean"
+### clemente and buchmann data ####
+Clemente_data <- active_data %>% dplyr::filter(Device == "Axivity", threshold == "active")
+clem <- mean_max_plotting(Clemente_data)
+buch <- mean_max_plotting(Buchmann_data  %>% dplyr::filter(threshold == "active"))
 
-max_data <- data %>% dplyr::filter(threshold == "active")
-max_model <- lm(log(maxVDBA) ~ LogMass, data = max_data)
-max_res <- broom.mixed::tidy(max_model, effects = "fixed")
-max_results <- max_res[grep("LogMass", max_res$term), ]
-max_results$sig <- ifelse(max_results$p.value < 0.05, "sig", "not sig")
-max_results$variable <- "max"
+(clem / buch) +
+  plot_layout(guides = "collect") &
+  theme(
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.title = element_text(size = 10),
+    legend.text  = element_text(size = 10),
+    legend.key.size = unit(0.4, "lines"),
+    legend.spacing.x = unit(0.3, "cm"),
+    legend.spacing.y = unit(0.2, "cm")
+  )
+  
+### Individual masses ####
+ind_species <- c("Annett_Kangaroo", "Clemente_Impala", "Clemente_Kudu", "Gaschk_Quoll", "HarveyCaroll_Pangolin",  "Mauny_Goat", "Pagano_Bear", "Sparkes_Koala", "Vehkaoja_Dog")
+ind_data <- summary_data %>% dplyr::filter(Name %in% ind_species, threshold == "active")
+ind_data$ID[ind_data$Name == "Vehkaoja_Dog"] <-
+  str_split_i(ind_data$ID[ind_data$Name == "Vehkaoja_Dog"], "_", 1)
+ind_data <- merge(ind_data, ind_weight, by = c("Name", "ID"))
 
-rbind(mean_results, max_results)
-
-
-
-# Even further separated
-Where the masses of the exact individual are known. Per species plot and then all known individuals on the same graph.
-{r echo = FALSE}
-
+### Even further separated
 ind_data <- ind_data %>%
-  dplyr::filter(Dataset != "Clemente_Kudu")
-
-# Plots -------------------------------------------------------------------
-p7mean <- ggplot(ind_data, aes(x = LogMass, y = log10(meanVDBA), shape = threshold)) +
-  geom_point(aes(colour = Dataset), size = 3) +
+  dplyr::filter(Name != "Clemente_Kudu")
+p7mean <- ggplot(ind_data, aes(x = IndLogMass, y = log10(IndMean), shape = threshold)) +
+  geom_point(aes(colour = Name), size = 3) +
   xlab("Log mass (g)") + ylab("Log mean VDBA (g)") +
   scale_color_manual(values = fave_colours) +
   ggnewscale::new_scale_colour() + # reset the colour scale
@@ -365,10 +177,10 @@ p7mean <- ggplot(ind_data, aes(x = LogMass, y = log10(meanVDBA), shape = thresho
   scale_color_manual(values = threshold_cols) +
   my_theme() +
   theme(legend.position = "none") +
-  facet_wrap(~Dataset, scales = "free")
+  facet_wrap(~Name, scales = "free")
 
-p7max <- ggplot(ind_data %>% dplyr::filter(threshold == "active"), aes(x = LogMass, y = log10(maxVDBA))) +
-  geom_point(aes(colour = Dataset), size = 3) +
+p7max <- ggplot(ind_data %>% dplyr::filter(threshold == "active"), aes(x = IndLogMass, y = log10(IndMax))) +
+  geom_point(aes(colour = Name), size = 3) +
   xlab("Log mass (g)") + ylab("Log max VDBA (g)") +
   scale_color_manual(values = fave_colours) +
   ggnewscale::new_scale_colour() +
@@ -376,115 +188,72 @@ p7max <- ggplot(ind_data %>% dplyr::filter(threshold == "active"), aes(x = LogMa
   scale_color_manual(values = threshold_cols) +
   my_theme() +
   theme(legend.position = "none")+
-  facet_wrap(~Dataset, scales = "free")
+  facet_wrap(~Name, scales = "free")
 
-plot7 <- (p7mean + p7max) +
-  plot_layout(guides = "collect") &
-  theme(
-    legend.position = "bottom",
-    legend.box = "horizontal",
-    legend.title = element_text(size = 10),
-    legend.text  = element_text(size = 10),
-    legend.key.size = unit(0.4, "lines"),
-    legend.spacing.x = unit(0.3, "cm"),
-    legend.spacing.y = unit(0.2, "cm")
-  )
+(p7mean + p7max)
 
-plot7
+## Stats ####
+summary_data <- summary_data %>% dplyr::filter(threshold == "active",
+                                               !Name %in% c(buchmann_species, "Vehkaoja_Dog"))
 
+full_mean_model <- glmmTMB(
+  log(IndMean) ~ LogMass +
+    (1 | Name) +
+    (1 | Device) +
+    (1 | Name:ID),
+  data = summary_data
+)
+simple_mean_model <- glmmTMB(
+  log(IndMean) ~ LogMass +
+    (1 | Name) + 
+    (1 | Device) +
+    (1 | DeviceAttachment),
+  data = summary_data
+)
+simplest_mean_model <- glmmTMB(
+  log(IndMean) ~ LogMass +
+    (1 | Device) + 
+    (1 | Name),
+  data = summary_data
+)
 
+AIC(full_mean_model, simple_mean_model, simplest_mean_model)
+anova(full_mean_model, simple_mean_model, simplest_mean_model)
+# from playing around with this, it looked like Device was the most important explanatory factor
 
-## Understanding the animal activity
-# Find the active minutes per day
-Is there a mass-mediated effect on activity patterns generally
-
-# find the minutes per day that the animals are active
-all_minutes_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "*_active_minutes\\.csv$", full.names = TRUE)
-minute_data <- lapply(all_minutes_files, function(x){
-  dat <- fread(x) %>% na.omit()
-  dat$Name <- basename(dirname(x))
-  dat
-})
-minute_data <- rbindlist(minute_data, fill = TRUE)
-minute_data <- minute_data %>% dplyr::filter(Name %in% long_species)
-merged_data <- merge(summary_data1, minute_data, by = c("ID", "Name"))
-
-# plot this
-merged_data$prop_active <- 1 - merged_data$prop_rest
-p8total <- ggplot(merged_data, aes(x = LogMass, y = prop_active, colour = Name)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  xlab("Log Mass (g)") +
-  ylab("Proportion of timeseries active") +
-  scale_color_manual(values = fave_colours) +
-  my_theme() +
-  theme(legend.position = "bottom")
-
-# average it across the individuals
-plot_data <- merged_data %>%
-  group_by(Name, LogMass) %>%
-  summarise(mean_high = mean(prop_high),
-            mean_med = mean(prop_med),
-            mean_low = mean(prop_low),
-            mean_rest = mean(prop_rest))
-
-# rotate it to allow all the activity levels
-plot_data <- plot_data %>%
-  pivot_longer(cols = c(mean_high, mean_med, mean_low, mean_rest),
-               names_to = "activity",
-               values_to = "prop")
-plot_data$activity <- factor(plot_data$activity, levels = c("mean_high", "mean_med", "mean_low", "mean_rest"))
-
-p8props <- ggplot(plot_data,  aes(x = LogMass, y = prop, colour = activity)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  xlab("Log Mass (g)") +
-  ylab("Proportion of timeseries per activity level") +
-  scale_colour_manual(values = c("mean_high" = "lightcoral",
-                                 "mean_med" = "tan2",
-                                 "mean_low" = "lightcyan3",
-                                 "mean_rest" = "ivory3")) +
-  my_theme() +
-  theme(legend.position = "bottom")
-
-plot8 <- (p8total + p8props) +
-  plot_layout(guides = "collect") &
-  theme(
-    legend.position = "bottom",
-    legend.box = "horizontal",
-    legend.title = element_text(size = 10),
-    legend.text  = element_text(size = 10),
-    legend.key.size = unit(0.4, "lines"),
-    legend.spacing.x = unit(0.3, "cm"),
-    legend.spacing.y = unit(0.2, "cm")
-  )
-
-plot8
+simple_max_model <- glmmTMB(
+  log(IndMax) ~ LogMass +
+    (1 | Name) + 
+    (1 | Device) +
+    (1 | DeviceAttachment),
+  data = summary_data
+)
 
 
+summary(simple_mean_model)
+summary(simple_max_model)
 
-## Understanding the distribution of activity
-Does the distibution of high and low VDBA differ with size?
-  
-  
-# load in all the vdba data
-all_files <- list.files(file.path(base_path, "AccelerometerData"), recursive = TRUE, pattern = "_1_processed.csv", full.names = TRUE)
-all_data <- lapply(all_files, function(x){
-  dat <- fread(x)
-  dat$Species <- basename(dirname(x))
-  
-  dat
-})
-all_data <- rbindlist(all_data)
+# Conclusion, there is no effect of body mass on the mean (marginal) or max VDBA (non sig)
 
-# only include datasets with more than 10 hours (10 * 60 * 60)
-selected_data <- all_data %>%
-  group_by(Species) %>%
-  dplyr::filter(n() > 5 * 60 * 60) %>% # 5 hours worth of data
-  ungroup()
+# Part 2: Animal activity ####
+# Hypothesis, there will be a significant difference in how big vs small animals behave
+# with larger animals spending less time in high activity
+
+# Understanding the distribution of activity
+# NOTE: all_data was too big to upload in entirity so I just uploaded a very small sample of it
+
+
+# only include datasets with more than 5 hours
+# selected_data <- all_data %>%
+#   group_by(Name) %>%
+#   dplyr::filter(n() > 5 * 60 * 60) %>% # 5 hours worth of data
+#   ungroup() %>%
+#   dplyr::filter(!Name %in% c("HARTH_Human", "Vehkaoja_Dog", "Mauny_Goat"))
+
+selected_data <- fread(file.path(base_path, "Selected_windows_data.csv"))
 
 # now plot the distributions
-ggplot(selected_data, aes(x = log10(seconds_VDBA), fill = Species)) + 
+ggplot(selected_data, aes(x = log10(seconds_VDBA), fill = Name)) + 
   geom_histogram(aes(y = after_stat(count / sum(count))), binwidth = 0.01) +
   scale_fill_manual(values = fave_colours) +
   scale_x_continuous(limits = c(-5, 1)) +
@@ -492,7 +261,21 @@ ggplot(selected_data, aes(x = log10(seconds_VDBA), fill = Species)) +
   my_theme() +
   theme(legend.position = "none",
         axis.text.y = element_text(size = 10)) +
-  facet_wrap(~Species, scales = "free_y")
+  facet_wrap(~Name, scales = "free_y")
 
 
+# density-based peak finding per dataset
+# Chris said to do this... but I don't fully understand it 
+library(pracma)  # for findpeaks()
+peaks <- selected_data %>%
+  group_by(Name) %>%
+  summarise(active_peak = {
+    d <- density(log10(seconds_VDBA))
+    d$x[findpeaks(d$y)[,2]]  # x position of peaks
+  })
 
+peaks <- merge(peaks, dataset_variables, by = "Name")
+ggplot(peaks, aes(x = LogMass, y = active_peak, colour = Name)) + geom_point()
+
+
+# no longer have any idea what I'm doing here.
