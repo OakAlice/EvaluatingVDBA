@@ -1,10 +1,8 @@
 # Ignore these directories at any level
-AccelerometerData/
+Data/
 .obsidian/
 Output/
 .git/
-MetabolicData/
-
 
 # Ignore R history files
 *.Rhistory

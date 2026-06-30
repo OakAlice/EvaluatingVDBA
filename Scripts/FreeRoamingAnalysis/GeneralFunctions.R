@@ -54,23 +54,12 @@ reformat_eobs_data <- function(data){
   return(data2)
 }
 
-reformat_clemente_data <- function(x){
-  dat <- fread(x)
-  dat <- dat[, 1:4]
-  colnames(dat) <- c("Time", "Accel.X", "Accel.Y", "Accel.Z")
-  dat$Time <- as.POSIXct((dat$Time - 719529)*86400, origin = "1970-01-01", tz = "UTC")
-  dat$ID <- tools::file_path_sans_ext(basename(x))
-  dat
-}
-
-
 
 # vdba generation ---------------------------------------------------------
 generate_vdba <- function(accel, species, dataset_variables, window_seconds){
   
-  sampling_style <- dataset_variables[Name == species]$SamplingStyle
-  # freq <- as.numeric(dataset_variables[Name == species]$Frequency) # I've now set it to be 10 for all
-  
+  sampling_style <- dataset_variables[dataset_variables$Name == species, ]$SamplingStyle
+ 
   if (sampling_style == "Continuous") {
     
     freq <- as.numeric(dataset_variables[Name == species]$Frequency)
@@ -88,7 +77,6 @@ generate_vdba <- function(accel, species, dataset_variables, window_seconds){
     az_dynamic <- accel$Accel.Z - az_static
     
     vedba <- sqrt(ax_dynamic^2 + ay_dynamic^2 + az_dynamic^2)
-    odba <- abs(ax_dynamic) + abs(ay_dynamic) + abs(az_dynamic)
     
   } else { # burst
     
@@ -107,11 +95,9 @@ generate_vdba <- function(accel, species, dataset_variables, window_seconds){
     accel[, az_dynamic := Accel.Z - mean_Z]
     
     vedba <- sqrt(accel$ax_dynamic^2 + accel$ay_dynamic^2 + accel$az_dynamic^2)
-    odba <- abs(accel$ax_dynamic) + abs(accel$ay_dynamic) + abs(accel$az_dynamic)
   }
   
   accel$vedba <- vedba
-  accel$odba <- odba
   
   return(accel)
 }
@@ -126,55 +112,10 @@ smooth_vdba <- function(accel, species, dataset_variables, window = 5) {
   
   # smooth VeDBA using rolling mean
   accel[, smooth_vdba := frollmean(vedba, n = win, align = "center", fill = NA)]
-  accel[, smooth_odba := frollmean(odba, n = win, align = "center", fill = NA)]
   # accel<- accel %>% select(ID, Time, smooth_vdba) %>% na.omit()
   
   return(accel)
 }
-
-# generate_threshold <- function(accel, species, dataset_variables) {
-#   
-#   sampling_style <- dataset_variables[Name == species]$SamplingStyle
-#   
-#   if (sampling_style == "Continuous") {
-#     
-#     freq <- as.numeric(dataset_variables[Name == species]$Frequency)
-#     if (is.na(freq)) stop("Frequency missing for species: ", species)
-#     win <- 5 * freq
-#     
-#     accel$rolling_sd <- roll_sd(accel$smooth_vdba, n = win, fill = NA, align = "center")
-#     
-#     static_idx <- which(accel$rolling_sd < quantile(accel$rolling_sd, 0.25, na.rm = TRUE))
-#     static_accel <- accel[static_idx, ]
-#     threshold_pct <- mean(static_accel$smooth_vdba, na.rm = TRUE)
-#     
-#     accel <- accel %>%
-#       na.omit() %>%
-#       mutate(threshold = ifelse(smooth_vdba > threshold_pct, "active", "inactive"))
-#     
-#   } else {
-#     
-#     accel <- detect_bursts(accel, gap_threshold = 1)
-#     
-#     threshold_pct <- accel %>%
-#       group_by(burst_id) %>%
-#       summarise(sd = sd(vedba, na.rm = TRUE), .groups = "drop") %>%
-#       arrange(sd) %>%
-#       slice(floor(n() * 0.25)) %>%
-#       pull(sd)
-#     
-#     accel_activities <- accel %>%
-#       na.omit() %>%
-#       group_by(ID, burst_id) %>%
-#       summarise(sd = sd(vedba, na.rm = TRUE), .groups = "drop") %>%
-#       mutate(threshold = ifelse(sd > threshold_pct, "active", "inactive"))
-#     
-#     accel <- merge(accel, accel_activities, by = c("ID", "burst_id"))
-#       
-#   }
-#   
-#   return(accel)
-# }
 
 summarise_vdba <- function(accel, freq, window_seconds) {
 
@@ -189,15 +130,8 @@ summarise_vdba <- function(accel, freq, window_seconds) {
     group_by(ID, window) %>%
     summarise(
       seconds_VDBA = mean(vedba, na.rm = TRUE),
-      seconds_ODBA = mean(odba, na.rm = TRUE),
-      int_VDBA = { # take the trapezoidal integration
-        v <- vedba[!is.na(vedba)]
-        if (length(v) < 2) NA_real_
-        else (sum(v) - 0.5 * (v[1] + v[length(v)])) / freq
-      },
       .groups = "drop"
     )
-  
   
   seconds <- seconds %>%
     na.omit() %>%
@@ -210,9 +144,6 @@ summarise_vdba <- function(accel, freq, window_seconds) {
       meanVDBA = mean(.data$seconds_VDBA, na.rm = TRUE),
       minVDBA  = min(.data$seconds_VDBA, na.rm = TRUE),
       maxVDBA  = max(.data$seconds_VDBA, na.rm = TRUE),
-      meanInt = mean(.data$int_VDBA, na.rm = TRUE),
-      minInt  = min(.data$int_VDBA, na.rm = TRUE),
-      maxInt  = max(.data$int_VDBA, na.rm = TRUE),
       .groups = "drop"
     )
   
@@ -222,9 +153,6 @@ summarise_vdba <- function(accel, freq, window_seconds) {
       meanVDBA = mean(.data$seconds_VDBA, na.rm = TRUE),
       minVDBA  = min(.data$seconds_VDBA, na.rm = TRUE),
       maxVDBA  = max(.data$seconds_VDBA, na.rm = TRUE),
-      meanInt = mean(.data$int_VDBA, na.rm = TRUE),
-      minInt  = min(.data$int_VDBA, na.rm = TRUE),
-      maxInt  = max(.data$int_VDBA, na.rm = TRUE),
       .groups = "drop"
     ) %>%
     mutate(threshold = "all")

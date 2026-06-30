@@ -1,24 +1,17 @@
 # generate the vdba and summary -------------------------------------------
-if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species, "_", window_seconds, "_summary.csv")))){
+
+if(file.exists(file.path(base_path, "Data/AccelerometerData", species, paste0(species, "_", window_seconds, "_summary.csv")))){
   print("already summarised")
 } else {
-  cleaned_file <- file.path(base_path, "AccelerometerData", species, paste0(species, "_cleaned_reformatted.csv"))
+  cleaned_file <- file.path(base_path, "Data/AccelerometerData", species, paste0(species, "_cleaned_reformatted.csv"))
   if (file.exists(cleaned_file)){
      accel <- fread(cleaned_file)
   } else {
-    accel <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
+    accel <- fread(file.path(base_path, "Data/AccelerometerData", species, paste0(species, "_reformatted.csv")))
   }
   
   accel <- generate_vdba(accel, species, dataset_variables, window_seconds)
-  
-  # have removed the smoothing because I'm already doing a mean so don't need the extra step???
-  # sampling_style <- dataset_variables[Name == species]$SamplingStyle
-  # if (sampling_style == "Continuous"){
-  #   accel <- smooth_vdba(accel, species, dataset_variables, window = 5)
-  # }
-  
-  # removed threshold because its now calculated more simply inside the summarisation
-  # accel <- generate_threshold(accel, species, dataset_variables)
+  accel <- smooth_vdba(accel, species, dataset_variables, window = 5)
   
   # making some diagnostic plots ---------------------------------------------
   # plot the smoothed data and then where the threshold is
@@ -32,60 +25,17 @@ if(file.exists(file.path(base_path, "AccelerometerData", species, paste0(species
   #   geom_histogram(alpha = 0.6, position = "identity", bins = 50) +
   #   labs(y = "Frequency", fill = "Threshold") +
   #   theme_minimal()
-  # 
-  # ggsave(file.path(base_path, "AccelerometerData", species, "assessing_the_threshold.png"), plot = p1,
-  #        width = 10, height = 4, dpi = 300)
-  # ggsave(file.path(base_path, "AccelerometerData", species, "frequency_of_vedba.png"),  plot = p2,
-  #        width = 10, height = 4, dpi = 300)
   
   # Generate the summary stats ----------------------------------------------
   freq <- as.numeric(dataset_variables[Name == species]$Frequency) 
-  burst <- as.character(dataset_variables[Name == species]$SamplingStyle)
+  
+  # TODO: Need to update the threshold in this... ####
   vedba_stats <- summarise_vdba(accel, freq, window_seconds) 
   
-  fwrite(vedba_stats$summary, file.path(base_path, "AccelerometerData", species, 
+  # save
+  fwrite(vedba_stats$summary, file.path(base_path, "Data/AccelerometerData", species, 
                                   paste0(species, "_", window_seconds, "_summary.csv")))
-  
-  fwrite(vedba_stats$accel, file.path(base_path, "AccelerometerData", species, 
+  fwrite(vedba_stats$accel, file.path(base_path, "Data/AccelerometerData", species, 
                                         paste0(species, "_", window_seconds, "_processed.csv")))
   
 }
-
-
-
-# Active minutes ----------------------------------------------------------
-# calculating the active minutes per day
-# Define cut points for active levels (this will be relative to the species)
-accel <- fread(file.path(base_path, "AccelerometerData", species, 
-                                    paste0(species, "_", window_seconds, "_processed.csv")))
-accel <- accel %>%
-  mutate(
-    activity_level = case_when(
-      threshold == "inactive"                           ~ "inactive",
-      seconds_VDBA > 0.75 * max(accel$seconds_VDBA)     ~ "high",
-      seconds_VDBA > 0.5 *  max(accel$seconds_VDBA)     ~ "medium",
-      seconds_VDBA > 0.05 * max(accel$seconds_VDBA)     ~ "low",
-      TRUE                    ~ "low"
-    )
-  )
-
-# Frequency from metadata 
-freq <- as.numeric(dataset_variables[Name == species]$Frequency)
-
-# Summaries
-minutes_per_id <- accel %>%
-  group_by(ID) %>%
-  summarise(
-    total_min = n() / freq / ifelse(window_seconds == 1, 60, 12), # split into minutes based on window length
-    high_min  = sum(activity_level == "high")    / freq / 60,
-    med_min   = sum(activity_level == "medium")  / freq / 60,
-    low_min   = sum(activity_level == "low")     / freq / 60,
-    rest_min  = sum(activity_level == "inactive")/ freq / 60,
-    prop_high = high_min / total_min,
-    prop_med  = med_min  / total_min,
-    prop_low  = low_min  / total_min,
-    prop_rest = rest_min / total_min
-  )
-
-fwrite(minutes_per_id, file.path(base_path, "AccelerometerData", species, paste0(species, "_", window_seconds, "_active_minutes.csv")))
-

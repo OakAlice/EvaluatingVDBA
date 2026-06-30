@@ -5,12 +5,6 @@
 data <- fread(file.path(base_path, "AccelerometerData", species, paste0(species, "_reformatted.csv")))
 data <- na.omit(data)
 
-if (species == "Annett_Possum" | species == "Neis_Cow" 
-    | species == "Pagano_Bear" | species == "Studd_Lynx" |
-    species == "Sparkes_Koala"){
-  data <- data[1:(nrow(data)/4),]
-}
-
 if (!file.exists(output_path)){
   # plot the data and save to disk
   # rakes forever so only do it if necessary
