@@ -55,7 +55,8 @@ merged_data <- merge(all_data, dataset_variables %>% select(Name, AnimalType, Lo
 # exclude Species
 merged_data <- merged_data %>% dplyr::filter(
   !Species == "Studd_Squirrel" # sampling rate too low, not comparable
-)
+) %>%
+  mutate(Category = ifelse(Category == "Marsupial_Quadruped", "Mammal_Quadruped", Category))
 
 
 # plot

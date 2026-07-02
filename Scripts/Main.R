@@ -41,7 +41,7 @@ fave_colours_big <- c(
   "firebrick3", "coral", "tan2", "goldenrod2", "khaki3", 
   "olivedrab4","palegreen3", "aquamarine3","darkcyan", 
   "skyblue4","dodgerblue4", "cornflowerblue", "powderblue", "lightslateblue", 
-  "mediumpurple3", "plum", "thistle", "rosybrown1",
+   "plum", "thistle", "rosybrown1",
   "mistyrose3", "lavenderblush2"
 )
 
