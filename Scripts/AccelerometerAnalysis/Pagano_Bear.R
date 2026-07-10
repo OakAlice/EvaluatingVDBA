@@ -6,7 +6,10 @@ list_locomotion_labels <- c("walking")
 
 # Data --------------------------------------------------------------------
 # Data was already reformatted in the DataReformatting github
-dat <- fread(file.path(base_path, "Data/Accelerometer/Pagano_Bear/Pagano_Bear_formatted.csv"))
+dat <- fread(file.path(base_path, "Data/Accelerometer/Pagano_Bear/Pagano_Bear_formatted.csv")) %>%
+  mutate(X = X/9.81,
+         Y = Y/9.81,
+         Z = Z/9.81)
 
 # Get Vedba ---------------------------------------------------------------
 dat <- get_vedba(dat, freq)
@@ -45,27 +48,27 @@ summ_stats <- summary %>%
 fwrite(summ_stats, file.path(base_path, "Output/Pagano_BearAccelerometer_summary_stats.csv"))
 
 # Plots -------------------------------------------------------------------
-mean_plot <- ggplot(summ_stats, aes(x = LogMass, y = logmean, colour = as.factor(ID))) + 
-  geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = ID), width = 0.01) +
-  geom_point(size = 3) +
-  geom_smooth(method = "lm", aes(group = 1), colour = "dodgerblue4", se = FALSE, linewidth = 2) +
-  my_theme() + 
-  scale_colour_manual(values = fave_colours) + 
-  theme(legend.position = "none") +
-  labs(x = "Log Mass (grams)", y = "Log mean VDBA (g)")
-
-mean_plot
-
-# save
-img_output <- file.path(base_path, "Output", "Pagano_BearAccelerometer.png")
-ggsave(img_output, mean_plot)
-
-# Statistics --------------------------------------------------------------
-mean_model <- glmmTMB(logmean ~ LogMass, data = summ_stats)
-summary(mean_model)
-
-mean_model2 <- glmmTMB(log10(mean_vedba) ~ LogMass, data = summary)
-summary(mean_model2)
+# mean_plot <- ggplot(summ_stats, aes(x = LogMass, y = logmean, colour = as.factor(ID))) + 
+#   geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = ID), width = 0.01) +
+#   geom_point(size = 3) +
+#   geom_smooth(method = "lm", aes(group = 1), colour = "dodgerblue4", se = FALSE, linewidth = 2) +
+#   my_theme() + 
+#   scale_colour_manual(values = fave_colours) + 
+#   theme(legend.position = "none") +
+#   labs(x = "Log Mass (grams)", y = "Log mean VDBA (g)")
+# 
+# mean_plot
+# 
+# # save
+# img_output <- file.path(base_path, "Output", "Pagano_BearAccelerometer.png")
+# ggsave(img_output, mean_plot)
+# 
+# # Statistics --------------------------------------------------------------
+# mean_model <- glmmTMB(logmean ~ LogMass, data = summ_stats)
+# summary(mean_model)
+# 
+# mean_model2 <- glmmTMB(log10(mean_vedba) ~ LogMass, data = summary)
+# summary(mean_model2)
 
 
 
