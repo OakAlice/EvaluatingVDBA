@@ -5,48 +5,66 @@
 
 
 dataset_variables <- fread(file.path(base_path, "Data/Accelerometer/Dataset_Variables.csv"))
-
-
-# Functions ---------------------------------------------------------------
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/Functions.R"))
 
-# Datasets with labels ----------------------------------------------------
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Sparkes_Koala.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Galea_Cat.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Studd_Squirrel.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Smit_Cat.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Dunford_Cat.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Vehkaoja_Dog.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/HarveyCaroll_Pangolin.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Mauny_Goat.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Dickinson_PygmyGoat.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Dickinson_Ibex.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Harris_Sheep.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Pagano_Bear.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/HARTH_Human.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Glider.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Clemente_Impala.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Clemente_Echidna.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Bonneau_Goat.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/MoralesVargas_Cow.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Wijers_Lion.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Christensen_Baboon.R"))
 
-# Thresholded -------------------------------------------------------------
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Gaschk_Quoll.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Possum.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Wallaby.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Kangaroo.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Bettong.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Clemente_Kudu.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Rautiainen_Reindeer.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Neis_Cow.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Williams_Squirrel.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Gunner_Lion.R"))
+labelled_species <- basename(list.dirs(file.path(base_path, "Data/Accelerometer"), recursive = FALSE))
 
+for (species in labelled_species){
+  
+  # variables
+  freq <- dataset_variables$Frequency[dataset_variables$Name == species]
+  stride_window <- dataset_variables$StrideWindow[dataset_variables$Name == species]
+  list_locomotion_labels <- dataset_variables$LocomotionLabels[dataset_variables$Name == species]
+  
+  # function that formats the data if necessary
+  data <- format_data(species) 
+  fwrite(data, file.path(base_path, "Data/Accelerometer", species, paste0(species, "_formatted.csv")))
+  
+  # Get Vedba
+  data <- get_vedba(data, freq)
+  
+  # Get locomotion
+  data <- get_locomotion(data, freq, stride_window, list_locomotion_labels)
+  
+  # Summarise
+  # now take a mean across each window
+  summary <- data %>%
+    group_by(ID, wind_id) %>%
+    summarise(mean_vedba = mean(vedba, na.rm = TRUE),
+              max_vedba = max(vedba, na.rm = TRUE))
+  
+  # Add animal mass
+  if(file.exists(file.path(base_path, "Data/Accelerometer/", species, "Mass_of_individuals.csv"))){
+    animal_mass <- fread(file.path(base_path, "Data/Accelerometer/", species, "Mass_of_individuals.csv")) %>%
+      select(ID, LogMass)
+    summary <- merge(summary, animal_mass, by = "ID")
+  } else {
+    animal_mass <- dataset_variables$LogMass[dataset_variables$Name == species]
+    summary$LogMass <- animal_mass
+  }
+  
+  # Final summarisation
+  summ_stats <- summary %>%
+    group_by(ID, LogMass) %>%
+    summarise(
+      mean_vedba_raw = mean(mean_vedba, na.rm = TRUE),
+      sd_vedba_raw = sd(mean_vedba, na.rm = TRUE),
+      n = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      se_vedba_raw = sd_vedba_raw / sqrt(n),
+      logmean = log10(mean_vedba_raw),
+      log_upper = log10(mean_vedba_raw + se_vedba_raw),
+      log_lower = log10(mean_vedba_raw - se_vedba_raw)
+    ) %>%
+    mutate(ID = as.character(ID))
+  
+  fwrite(summ_stats, file.path(base_path, "Output", paste0(species, "Accelerometer_summary_stats.csv")))
+  
+}
 
-# Buchmann datasets -------------------------------------------------------
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Buchmann_Datasets.R"))
 
 
 
