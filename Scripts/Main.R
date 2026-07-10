@@ -15,7 +15,8 @@ p_load(tidyverse,
        data.table,
        zoo,
        glmmTMB,
-       patchwork
+       patchwork,
+       signal
 )
 
 base_path <- "C:/Users/PC/Documents/EvaluatingVDBA"
@@ -36,7 +37,7 @@ my_theme <- function() {
 }
 
 fave_colours <- c("firebrick3", "tan2", "goldenrod2", "khaki3", "palegreen3", "aquamarine3", "darkcyan",
-                  , "cornflowerblue", "powderblue","plum", "rosybrown1","lavenderblush2")
+                   "cornflowerblue", "powderblue","plum", "rosybrown1","lavenderblush2")
 fave_colours_big <- c(
   "firebrick3", "coral", "tan2", "goldenrod2", "khaki3", 
   "olivedrab4","palegreen3", "aquamarine3","darkcyan", 
@@ -45,6 +46,9 @@ fave_colours_big <- c(
   "mistyrose3", "lavenderblush2"
 )
 
+# Making figures for paper ------------------------------------------------
+source(file.path(base_path, "Scripts/MakingAFigure.R"))
+
 # Run analyses ------------------------------------------------------------
 # Motion Tracking
 source(file.path(base_path, "Scripts/MotionTrackingAnalysis.R"))
@@ -52,9 +56,4 @@ source(file.path(base_path, "Scripts/MotionTrackingAnalysis.R"))
 source(file.path(base_path, "Scripts/SimulationAnalysis.R"))
 # Kangaroo Data
 source(file.path(base_path, "Scripts/AccelerometerAnalysis.R"))
-
-
-
-# Making figures for paper ------------------------------------------------
-source(file.path(base_path, "Scripts/MakingAFigure.R"))
 

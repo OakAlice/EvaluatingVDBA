@@ -6,36 +6,43 @@
 
 dataset_variables <- fread(file.path(base_path, "Data/Accelerometer/Dataset_Variables.csv"))
 
-# Non-ungulates -----------------------------------------------------------
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Kangaroo.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Bettong.R"))
+
+# Functions ---------------------------------------------------------------
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Functions.R"))
+
+
+# Datasets with labels ----------------------------------------------------
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/Sparkes_Koala.R"))
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/Galea_Cat.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Smit_Cat.R"))
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/Studd_Squirrel.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Smit_Cat.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Dunford_Cat.R"))
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/Vehkaoja_Dog.R"))
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/HarveyCaroll_Pangolin.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/Pagano_Bear.R"))
-source(file.path(base_path, "Scripts/AccelerometerAnalysis/HARTH_Human.R"))
-
-
-
-# Not done yet ------------------------------------------------------------
-# Quoll data from Gaschk et al., 2023 
-# Custom walking detection model
-#source(file.path(base_path, "Scripts/AccelerometerAnalysis/Quoll.R"))
-
-# Impala data from Wilson et al., unpublished
-# Custom walking detection model
-#source(file.path(base_path, "Scripts/AccelerometerAnalysis/Impala.R"))
-
-
-
-# Ungulates ---------------------------------------------------------------
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/Mauny_Goat.R"))
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/Dickinson_PygmyGoat.R"))
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/Dickinson_Ibex.R"))
 source(file.path(base_path, "Scripts/AccelerometerAnalysis/Harris_Sheep.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Pagano_Bear.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/HARTH_Human.R"))
+
+
+# Thresholded -------------------------------------------------------------
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Gaschk_Quoll.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Possum.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Glider.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Wallaby.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Kangaroo.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Annett_Bettong.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Clemente_Impala.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Clemente_Kudu.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Rautiainen_Reindeer.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Neis_Cow.R"))
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Williams_Squirrel.R"))
+
+# Buchmann datasets -------------------------------------------------------
+source(file.path(base_path, "Scripts/AccelerometerAnalysis/Buchmann_Datasets.R"))
+
 
 
 
@@ -48,28 +55,65 @@ all_data <- lapply(files, function(x){
   dat
 })
 all_data <- rbindlist(all_data, fill = TRUE)
+merged_data <- merge(all_data, dataset_variables %>% select(Name, AnimalType, LocomotionType, Category, Device, LocomotionDetection), by.x = "Species", by.y = "Name")
+merged_data <- merged_data %>% 
+  mutate(Category = ifelse(Category == "Marsupial_Quadruped", "Mammal_Quadruped", Category)) %>%
+  dplyr::filter(!Species == "Pagano_Bear") # this one is on a different scale
 
-# add in the categories
-merged_data <- merge(all_data, dataset_variables %>% select(Name, AnimalType, LocomotionType, Category), by.x = "Species", by.y = "Name")
-
-# exclude Species
-merged_data <- merged_data %>% dplyr::filter(
-  !Species == "Studd_Squirrel" # sampling rate too low, not comparable
-) %>%
-  mutate(Category = ifelse(Category == "Marsupial_Quadruped", "Mammal_Quadruped", Category))
-
-
-# plot
-mean_plot <- ggplot(merged_data, aes(x = LogMass, y = logmean, colour = Species)) + 
+# plot ---------------------------------------------------------------------
+# All 
+ggplot(merged_data, aes(x = LogMass, y = logmean, colour = Species, shape = AnimalType)) + 
   geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = Species), width = 0.01) +
   geom_point(size = 3) +
   geom_smooth(method = "lm", aes(group = Category, linetype = Category), 
               colour = "black", se = FALSE, linewidth = 1) +
   my_theme() + 
-  scale_colour_manual(values = fave_colours_big) + 
+  # scale_colour_manual(values = fave_colours_big) + 
   scale_linetype_manual(values = c("solid", "dashed", "dotted", "dotdash", "longdash")) +
   labs(x = "Log Mass (grams)", y = "Log mean VDBA (g)") +
   theme(legend.position = "right",
         legend.box = "vertical")
 
-mean_plot
+# Labels
+ggplot(merged_data %>% dplyr::filter(LocomotionDetection == "Labels"), 
+       aes(x = LogMass, y = logmean, colour = Species, shape = AnimalType)) + 
+  geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = Species), width = 0.01) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", aes(group = 1), 
+              colour = "black", se = FALSE, linewidth = 1) +
+  my_theme() + 
+  # scale_colour_manual(values = fave_colours_big) + 
+  scale_linetype_manual(values = c("solid", "dashed", "dotted", "dotdash", "longdash")) +
+  labs(x = "Log Mass (grams)", y = "Log mean VDBA (g)") +
+  theme(legend.position = "right",
+        legend.box = "vertical")
+
+
+# Axivity only
+ggplot(merged_data %>% dplyr::filter(Device == "Axivity", !Species == "HARTH_Human"), 
+       aes(x = LogMass, y = logmean, colour = Species, shape = AnimalType)) + 
+  geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = Species), width = 0.01) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", aes(group = 1), 
+              colour = "black", se = FALSE, linewidth = 1) +
+  my_theme() + 
+  # scale_colour_manual(values = fave_colours_big) + 
+  scale_linetype_manual(values = c("solid", "dashed", "dotted", "dotdash", "longdash")) +
+  labs(x = "Log Mass (grams)", y = "Log mean VDBA (g)") +
+  theme(legend.position = "right",
+        legend.box = "vertical")
+
+
+# Buchmann only
+ggplot(merged_data %>% dplyr::filter(Device == "Buchmann"), 
+       aes(x = LogMass, y = logmean, colour = Species, shape = AnimalType)) + 
+  geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = Species), width = 0.01) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", aes(group = 1), 
+              colour = "black", se = FALSE, linewidth = 1) +
+  my_theme() + 
+  # scale_colour_manual(values = fave_colours_big) + 
+  scale_linetype_manual(values = c("solid", "dashed", "dotted", "dotdash", "longdash")) +
+  labs(x = "Log Mass (grams)", y = "Log mean VDBA (g)") +
+  theme(legend.position = "right",
+        legend.box = "vertical")

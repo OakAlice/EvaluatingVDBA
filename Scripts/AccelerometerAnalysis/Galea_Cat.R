@@ -51,8 +51,7 @@ summary <- dat %>%
             max_vedba = max(vedba, na.rm = TRUE))
 
 # Add animal mass ---------------------------------------------------------
-animal_mass <- fread(file.path(base_path, "Data/Accelerometer/Galea_Cat", "Mass_of_Individuals.csv")) %>%
-  pull(LogMass)
+animal_mass <- dataset_variables$LogMass[dataset_variables$Name == "Galea_Cat"]
 summary$LogMass <- animal_mass
 
 # Final summarisation -----------------------------------------------------
