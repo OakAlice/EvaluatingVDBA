@@ -133,31 +133,3 @@ summ_stats <- summaries %>%
   )
 
 fwrite(summ_stats, file.path(base_path, "Output/Sparkes_KoalaAccelerometer_summary_stats.csv"))
-
-# Plots -------------------------------------------------------------------
-# ggplot(summaries, aes(x = LogMass, y = log10(mean_vedba))) +
-#   geom_boxplot(aes(colour = ID, group = ID)) +
-#   geom_smooth(method = "lm", aes(group = 1)) +
-#   my_theme()
-
-mean_plot <- ggplot(summ_stats, aes(x = LogMass, y = logmean, colour = ID)) + 
-  geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = ID), width = 0.01) +
-  geom_point(size = 3) +
-  geom_smooth(method = "lm", aes(group = 1), colour = "dodgerblue4", se = FALSE, linewidth = 2) +
-  my_theme() + 
-  theme(legend.position = "none") +
-  scale_colour_manual(values = fave_colours) + 
-  labs(x = "Log Mass (grams)", y = "Log mean VDBA (g)")
-
-mean_plot
-
-# save
-img_output <- file.path(base_path, "Output", "Sparkes_KoalaAccelerometer.png")
-ggsave(img_output, mean_plot)
-
-# Statistics --------------------------------------------------------------
-mean_model <- glmmTMB(logmean ~ LogMass, data = summ_stats)
-summary(mean_model)
-
-mean_model2 <- glmmTMB(log10(mean_vedba) ~ LogMass, data = summaries)
-summary(mean_model2)

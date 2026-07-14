@@ -9,8 +9,15 @@ source(file.path(base_path, "Scripts/AccelerometerAnalysis/Functions.R"))
 
 
 labelled_species <- basename(list.dirs(file.path(base_path, "Data/Accelerometer"), recursive = FALSE))
+# TODO: figure out a workarpound for the threshold species...
 
 for (species in labelled_species){
+  
+  if(species %in% c("Annett_Kangaroo", "Sparkes_Koala")){
+    # note that, for now, Annett_Kangaroo and Sparkes_Koala still have custom scripts
+    source(file.path(base_path, "Scripts/AccelerometerAnalysis", paste0(species, ".R")))
+    next
+  }
   
   # variables
   freq <- dataset_variables$Frequency[dataset_variables$Name == species]
@@ -18,11 +25,22 @@ for (species in labelled_species){
   list_locomotion_labels <- dataset_variables$LocomotionLabels[dataset_variables$Name == species]
   
   # function that formats the data if necessary
-  data <- format_data(species) 
-  fwrite(data, file.path(base_path, "Data/Accelerometer", species, paste0(species, "_formatted.csv")))
+  data <- format_labelled_data(species) 
+  fwrite(data, file.path(base_path, "Data/Accelerometer", species, paste0(species, "_reformatted.csv")))
   
   # Get Vedba
-  data <- get_vedba(data, freq)
+  if(species == "Studd_Squirrel"){
+    win <- 5 * freq 
+    ax_static <- frollmean(data$X, n = win, align = "center", fill = NA)
+    ay_static <- frollmean(data$Y, n = win, align = "center", fill = NA)
+    az_static <- frollmean(data$Z, n = win, align = "center", fill = NA)
+    ax_dynamic <- data$X - ax_static
+    ay_dynamic <- data$Y - ay_static
+    az_dynamic <- data$Z - az_static
+    data$vedba <- sqrt(ax_dynamic^2 + ay_dynamic^2 + az_dynamic^2)
+  } else {
+    data <- get_vedba(data, freq)
+  }
   
   # Get locomotion
   data <- get_locomotion(data, freq, stride_window, list_locomotion_labels)
@@ -67,9 +85,6 @@ for (species in labelled_species){
 
 
 
-
-
-
 # Compare them in one place -----------------------------------------------
 files <- list.files(file.path(base_path, "Output"), pattern = "_summary_stats.csv", full.names = TRUE)
 all_data <- lapply(files, function(x){
@@ -81,21 +96,7 @@ all_data <- rbindlist(all_data, fill = TRUE)
 merged_data <- merge(all_data, dataset_variables %>% select(Name, AnimalType, LocomotionType, Category, Device, LocomotionDetection), by.x = "Species", by.y = "Name")
 merged_data <- merged_data %>% 
   mutate(Category = ifelse(Category == "Marsupial_Quadruped", "Mammal_Quadruped", Category)) # %>%
-  # dplyr::filter(!Species == "Pagano_Bear") # this one is on a different scale
-
-# plot ---------------------------------------------------------------------
-# All 
-# ggplot(merged_data, aes(x = LogMass, y = logmean, colour = Species, shape = AnimalType)) + 
-#   geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = Species), width = 0.01) +
-#   geom_point(size = 3) +
-#   geom_smooth(method = "lm", aes(group = Category, linetype = Category), 
-#               colour = "black", se = FALSE, linewidth = 1) +
-#   my_theme() + 
-#   # scale_colour_manual(values = fave_colours_big) + 
-#   scale_linetype_manual(values = c("solid", "dashed", "dotted", "dotdash", "longdash")) +
-#   labs(x = "Log Mass (grams)", y = "Log mean VDBA (g)") +
-#   theme(legend.position = "right",
-#         legend.box = "vertical")
+# dplyr::filter(!Species == "Pagano_Bear") # this one is on a different scale
 
 # Labels
 ggplot(merged_data %>% dplyr::filter(LocomotionDetection == "Labels" | LocomotionType == "BipedalHopper"), 
