@@ -277,9 +277,24 @@ format_labelled_data <- function(species){
   }
   
   if(species == "Marcato_Dog"){
-    data <- fread(file.path(base_path, "Data/Accelerometer/Marcato_Dog/df_raw.csv")) %>%
+    data <- fread(file.path(base_path, "Data/Accelerometer/Marcato_Dog/df_raw.csv"))
+    # save 3 other files
+    chest_data <- data %>%
       rename(X = Chest.Acc.X, Y = Chest.Acc.Y, Z = Chest.Acc.Z, Activity = Position, Time = Timestamp, ID = Subject) %>%
       select(Time, ID, Activity, X, Y, Z)
+    fwrite(chest_data, file.path(base_path, "Data/Accelerometer/Marcato_Dog/Chest_Marcato_Dog_reformatted.csv"))
+    
+    back_data <- data %>%
+      rename(X = Back.Acc.X, Y = Back.Acc.Y, Z = Back.Acc.Z, Activity = Position, Time = Timestamp, ID = Subject) %>%
+      select(Time, ID, Activity, X, Y, Z)
+    fwrite(back_data, file.path(base_path, "Data/Accelerometer/Marcato_Dog/Back_Marcato_Dog_reformatted.csv"))
+    
+    collar_data <- data %>%
+      rename(X = Neck.Acc.X, Y = Neck.Acc.Y, Z = Neck.Acc.Z, Activity = Position, Time = Timestamp, ID = Subject) %>%
+      select(Time, ID, Activity, X, Y, Z)
+    fwrite(back_data, file.path(base_path, "Data/Accelerometer/Marcato_Dog/Collar_Marcato_Dog_reformatted.csv"))
+    
+    data <- chest_data # this is the one to save as the main file
   }
   
   if(species == "MoralesVargas_Cow"){
@@ -310,9 +325,92 @@ format_labelled_data <- function(species){
   }
   
   if(species == "Smit_Cat"){
-    # also mostly formatted already
-    data <- fread(file.path(base_path, "Data/Accelerometer/Smit_Cat/Smit_Cat_formatted.csv"))[, c(1:5, 7)] %>%
-      rename(Activity = FuncActivity)
+    
+    data_types <- c("Chest", "Collar")
+    
+    for (type in data_types){
+      files <- list.files(file.path(base_path, "Data/Accelerometer/Smit_Cat", type), full.names = TRUE)
+      anno <- fread(file.path(base_path, "Data/Accelerometer/Smit_Cat/Annotations.csv"))
+      
+      data <- lapply(files, function(x){
+        dat <- fread(x) %>%
+          dplyr::rename(Time = Timestamp,
+                        X = `Accelerometer X`,
+                        Y = `Accelerometer Y`,
+                        Z = `Accelerometer Z`)
+        
+        # ensure that the timezone for this data is set correctly
+        # set the tz to UTC (DOUBLE CHECK THIS DOESNT CHANGE THE VALUE)
+        dat[, Time := as.POSIXct(Time, format = "%d/%m/%Y %H:%M:%OS", tz = "UTC")]
+        
+        # select the data that falls within the annotation times
+        relevant_annotations <- anno %>%
+          dplyr::filter(ID == str_split(tools::file_path_sans_ext(basename(x)), "-")[[1]][3]) 
+        
+        Strt <- relevant_annotations %>% arrange(Time) %>% slice(1) %>% select(Time)
+        Ed <- relevant_annotations %>% arrange(desc(Time)) %>% slice(1) %>% select(Time)
+        
+        # are the annotations while the cat is wearing the device?
+        if (dat$Time[1]<Strt$Time){
+          print("accel starts before the annotations do (good)")
+        } else {
+          print("something is wrong (annotations before accel)")
+        }
+        dat2 <- dat[Time > Strt$Time & Time < Ed$Time]
+        
+        setDT(dat2)
+        setDT(relevant_annotations)
+        
+        # annotations were made per second whereas data is in 30Hz so we need to do some steps
+        # add second-level time keys to join them together
+        dat2[, Time_sec := as.POSIXct(floor(as.numeric(Time)), tz = "UTC")]
+        relevant_annotations[, Time_sec := as.POSIXct(floor(as.numeric(Time)), tz = "UTC")]
+        # ensure there is only one annotation per second (just in case)
+        relevant_annotations <- relevant_annotations[ , .SD[1], by = Time_sec]
+        # join
+        labelled_dat <- merge(dat2, relevant_annotations,
+                              by = "Time_sec",
+                              all.x = TRUE
+        )
+        
+        # remove the NA observations and clean up a bit
+        labelled_dat <- labelled_dat %>%
+          na.omit() %>%
+          dplyr::rename(Time = Time.x) %>%
+          select(-Time.y, -Time_sec)
+        
+        return(labelled_dat) # return this object
+      })
+      data <- rbindlist(data)
+        
+      # Recoding the behaviours -------------------------------------------------
+      data <- data %>%
+        mutate(Activity = case_when(
+          # General Active
+          Activity %in% c("Active_Climbing", "Active_Playfight.Fighting", "Active_Rubbing") ~ "Active",
+          # Locomotion
+          Activity %in% c("Active_Trotting","Active_Walking") ~ "Locomotion",
+          Activity %in% c("Active_Jumping.Horizontal", "Active_Jumping.Vertical") ~ "Jumping",
+          # Lying
+          Activity %in% c("Inactive_Lying.Crouch", "Inactive_Lying.Down") ~ "Lying",
+          # Sitting
+          Activity %in% c("Inactive_Sitting.Down", "Inactive_Sitting.Stationary", "Inactive_Sitting.Up") ~ "Sitting",
+          # Standing
+          Activity %in% c("Inactive_Standing.Stationary", "Inactive_Standing.Up") ~ "Standing",
+          # Grooming
+          Activity %in% c("Maintenance_Grooming", "Maintenance_Scratching", "Maintenance_Shake.Body", "Maintenance_Shake.Head") ~ "Grooming",
+          # Littering
+          Activity %in% c("Maintenance_Littering.Digging", "Maintenance_Littering.None", "Maintenance_Littering.Urinating") ~ "Littering",
+          # Eating
+          Activity == "Maintenance_Nutrition.Eating" ~ "Eating",
+          # other / synchronisation stuff
+          Activity == "Other_Social.Allogrooming" ~ "Social",
+          Activity %in% c("Other_Start", "Other_Outofsight", "Other_Other") ~ "Other"
+        ))
+      
+        # Save the file -----------------------------------------------------------
+        fwrite(data, file.path(base_path, "Data/Accelerometer/Smit_Cat", paste0(type, "_Smit_Cat_formatted.csv")))
+    }
   }
   
   if(species == "Studd_Squirrel"){
@@ -323,19 +421,35 @@ format_labelled_data <- function(species){
   }
   
   if(species == "Vehkaoja_Dog"){
+    
+    list_locomotion_labels <- c("Walking", "Pacing", "Galloping", "Trotting")
+    
     data <- fread(file.path(base_path, "Data/Accelerometer/Vehkaoja_Dog/DogMoveData.csv")) %>% 
-      select(DogID, ABack_x, ABack_y, ABack_z, Behavior_1, Behavior_2, Behavior_3) %>%
       mutate(Activity = ifelse(
         Behavior_1 %in% list_locomotion_labels | Behavior_2 %in% list_locomotion_labels | Behavior_3 %in% list_locomotion_labels,
         "Locomotion",
         "Other" # just set the remainder to other
       )) %>%
-      mutate(Time = row_number()) %>%
+      mutate(Time = row_number())
+    
+    chest_data <- data %>% 
       rename(ID = DogID,
              X = ABack_x,
              Y = ABack_y,
              Z = ABack_z) %>%
       select(ID, Time, X, Y, Z, Activity)
+    fwrite(chest_data, file.path(base_path, "Data/Accelerometer/Vehkaoja_Dog/Back_Vehkaoja_Dog_reformatted.csv"))
+    
+    # and now repeat it again for the other data
+    neck_data <- data %>%
+      rename(ID = DogID,
+             X = ANeck_x,
+             Y = ANeck_y,
+             Z = ANeck_z) %>%
+      select(ID, Time, X, Y, Z, Activity)
+    fwrite(neck_data, file.path(base_path, "Data/Accelerometer/Vehkaoja_Dog/Collar_Vehkaoja_Dog_reformatted.csv"))
+    
+    data <- chest_data # set this one to be default returned
   }
   
   if(species == "Wijers_Lion"){
@@ -375,16 +489,45 @@ format_labelled_data <- function(species){
 format_unlabelled_data <- function(species){
   
   if(species == "Buchmann_Ungulates"){
+    
+    freq <- 33.3
     # this deals with a heap of species
     species <- list.dirs(file.path(base_path, "Data/Accelerometer/Buchmann_Ungulates/"), recursive = FALSE)
     for (sp in species){
-      # was formatted previously
-      data <- fread(file.path(sp, paste0(basename(sp), "_reformatted.csv")))
-      colnames(data) <- c("ID", "Time", "X", "Y", "Z")
       
-      # assign the label based on the threshold
-      data <- get_vedba(data, freq)
-      data$Activity <- ifelse(data$vedba > 1, "Locomotion", "Other")
+      # and deal with the 3 different ways it was collected
+      for (position in c("breast", "leg", "neck")){
+        files <- list.files(file.path(sp, "raw"), pattern = position, full.names = TRUE)
+        df <- lapply(files, function(x){
+          dat <- fread(x)
+          colnames(dat) <- c("X", "Y", "Z", "Time")
+          
+          # convert to Gs
+          dat$X <- dat$X / 9.8
+          dat$X <- dat$X / 9.8
+          dat$X <- dat$X / 9.8
+          
+          # assign the label based on the threshold
+          dat <- get_vedba(dat, freq)
+          dat$Activity <- ifelse(dat$vedba > 1, "Locomotion", "Other")
+          
+          # get the ID
+          dat$ID <- str_split(basename(x), "_", simplify = T)[2]
+            
+          dat <- na.omit(dat)
+          dat
+        })
+        df <- rbindlist(df)
+        # adjust the names
+        if(position == "breast"){ 
+          position = "Chest"
+          data <- df # for this case save as the final as well
+        } else if (position == "neck"){
+          position = "Collar"
+        }
+        fwrite(df, file.path(sp,  paste0(position, "_", basename(sp), "_reformatted.csv")))
+      }
+      fwrite(data, file.path(sp,  paste0(basename(sp), "_reformatted.csv")))
     }
   }
     

@@ -93,14 +93,30 @@ all_data <- lapply(files, function(x){
   dat
 })
 all_data <- rbindlist(all_data, fill = TRUE)
-merged_data <- merge(all_data, dataset_variables %>% select(Name, AnimalType, LocomotionType, Category, Device, LocomotionDetection), by.x = "Species", by.y = "Name")
+merged_data <- merge(all_data, dataset_variables, by.x = "Species", by.y = "Name")
 merged_data <- merged_data %>% 
-  mutate(Category = ifelse(Category == "Marsupial_Quadruped", "Mammal_Quadruped", Category)) # %>%
-# dplyr::filter(!Species == "Pagano_Bear") # this one is on a different scale
+  mutate(Category = ifelse(Category == "Marsupial_Quadruped", "Mammal_Quadruped", Category)) %>%
+ dplyr::filter(!Species == "Caramaschi_Human") # this one is on a different scale
 
 # Labels
 ggplot(merged_data %>% dplyr::filter(LocomotionDetection == "Labels" | LocomotionType == "BipedalHopper"), 
-       aes(x = LogMass, y = logmean, colour = Species, shape = AnimalType)) + 
+       aes(x = LogMass.x, y = logmean, colour = Species, shape = AnimalType)) + 
+  geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = Species), width = 0.01) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", aes(group = 1), 
+              colour = "black", se = FALSE, linewidth = 1) +
+  my_theme() + 
+  # scale_colour_manual(values = fave_colours_big) + 
+  scale_linetype_manual(values = c("solid", "dashed", "dotted", "dotdash", "longdash")) +
+  labs(x = "Log Mass (grams)", y = "Log mean VDBA (g)") +
+  theme(legend.position = "right",
+        legend.box = "vertical")
+
+
+
+# Non-collars
+ggplot(merged_data %>% dplyr::filter(!DeviceAttachment == "Collar"), 
+       aes(x = LogMass.x, y = logmean, colour = Species, shape = AnimalType)) + 
   geom_errorbar(aes(ymin = log_lower, ymax = log_upper, colour = Species), width = 0.01) +
   geom_point(size = 3) +
   geom_smooth(method = "lm", aes(group = 1), 
